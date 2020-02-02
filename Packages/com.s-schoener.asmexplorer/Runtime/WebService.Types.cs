@@ -154,7 +154,7 @@ namespace AsmExplorer
                 },
                 f => WriteTypeName(writer, f.FieldType),
                 f => writer.Write(f.Name),
-                f => writer.Write(f.GetValue(null).ToString()),
+                f => writer.Write(f.GetValue(null)?.ToString() ?? "null"),
                 f => WriteAttributes(writer, f.GetCustomAttributes(true), false)
             );
         }
