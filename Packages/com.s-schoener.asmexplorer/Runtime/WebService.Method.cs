@@ -7,6 +7,17 @@ using SharpDisasm.Udis86;
 
 namespace AsmExplorer {
     public partial class WebService {
+        const int k_NoteColumn = 75;
+
+        void StartNote(HtmlWriter writer, ref MethodContext context) {
+            if (!context.HasLineNote) {
+                for (int i = context.LineLength; i < k_NoteColumn; i++)
+                    writer.Write(" ");
+                context.HasLineNote = true;
+            }
+            writer.Write("; ");
+        }
+
         private void InspectMethod(HtmlWriter writer, string assemblyName, string typeName, string methodName) {
             var asm = _explorer.FindAssembly(assemblyName);
             if (asm == null) {
@@ -75,12 +86,26 @@ namespace AsmExplorer {
             return disasm.Disassemble();
         }
 
+        struct MethodContext
+        {
+            public Operand R11;
+
+            public Instruction LastInstruction;
+            public bool DebugEnabled;
+            public int LineLength;
+            public bool HasLineNote;
+        }
+
         private object _disassemblerLock = new object();
         private void WriteDissassembly(HtmlWriter writer, MethodBase method) {
             if (method.IsAbstract || method.ContainsGenericParameters) {
                 writer.Write("Cannot display disassembly for generic or abstract methods.");
                 return;
             }
+            var context = new MethodContext() {
+                DebugEnabled = MonoDebug.IsEnabled
+            };
+
             var jitInfo = Mono.GetJitInfo(method);
             writer.Write("Address: ");
             writer.Write(jitInfo.CodeStart.ToString("X16"));
@@ -89,57 +114,101 @@ namespace AsmExplorer {
             writer.Write(jitInfo.CodeSize.ToString());
             writer.Break();
             writer.Write("Debug mode: ");
-            writer.Write(Mono.IsMonoDebugEnabled ? "enabled" : "disabled");
+            writer.Write(context.DebugEnabled ? "enabled" : "disabled");
             writer.Break();
             if (jitInfo.CodeSize <= 0) {
                 return;
             }
+
             using(writer.Tag("pre")) {
                 using (writer.Tag("code")) {
                     // some special help for calls using R11 and nops
                     int nops = 0;
-                    Instruction lastInstruction = null;
-                    ulong r11Register = 0;
                     lock (_disassemblerLock) {
                         foreach (var inst in GetInstructions(jitInfo)) {
+                            context.HasLineNote = false;
                             // abbreviate excessive nopping
                             if (inst.Mnemonic == ud_mnemonic_code.UD_Inop) {
                                 nops++;
-                                lastInstruction = inst;
+                                context.LastInstruction = inst;
                                 continue;
                             }
                             if (nops > 0) {
                                 if (nops == 1) {
-                                    writer.Write(lastInstruction.ToString());
+                                    writer.Write(context.LastInstruction.ToString());
                                 } else {
-                                    writer.Write("nop (");
+                                    var str = context.LastInstruction.ToString();
+                                    writer.Write(str);
+                                    context.LineLength = str.Length;
+                                    StartNote(writer, ref context);
+
+                                    writer.Write("repeated nops (");
                                     writer.Write(nops.ToString());
                                     writer.Write(" bytes)");
                                 }
                                 nops = 0;
+                                context.HasLineNote = false;
                                 writer.Write("\n");
                             }
-                            lastInstruction = inst;
+
                             using(writer.Tag("span").With("id", "X" + Address(inst).ToString("X16"))) {
-                                writer.Write(inst.ToString());
+                                var str = inst.ToString();
+                                context.LineLength = str.Length;
+                                writer.Write(str);
 
                                 if (inst.Mnemonic == ud_mnemonic_code.UD_Imov) {
                                     var op0 = inst.Operands[0];
+                                    var op1 = inst.Operands[1];
                                     // call targets on x64 are frequently placed in R11, so let's ensure that we catch that.
-                                    if (op0.Type == ud_type.UD_OP_REG && op0.Base == ud_type.UD_R_R11) {
-                                        r11Register = inst.Operands[1].LvalUQWord;
+                                    if (op0.Type == ud_type.UD_OP_REG && op0.Base == ud_type.UD_R_R11)
+                                        context.R11 = op1;
+                                    if (IsStoreSingleStepTrampoline(inst)) {
+                                        StartNote(writer, ref context);
+                                        writer.Write("write singlestep trampoline");
+                                    }
+                                    else if (IsReadSinglestepTrampoline(inst)) {
+                                        StartNote(writer, ref context);
+                                        writer.Write("read singlestep trampoline");
+                                    }
+                                    else if (IsStoreBreakpointTrampoline(inst)) {
+                                        StartNote(writer, ref context);
+                                        writer.Write("write breakpoint trampoline");
+                                    }
+                                    else if (IsReadBreakpointTrampoline(inst)) {
+                                        StartNote(writer, ref context);
+                                        writer.Write("read breakpoint trampoline");
                                     }
                                 } else if (inst.Mnemonic == ud_mnemonic_code.UD_Icall) {
-                                    WriteCallInstruction(writer, inst, r11Register);
-                                    r11Register = 0;
+                                    WriteCallInstruction(writer, inst, ref context);
+                                    context.R11 = null;
                                 } else if (IsJump(inst.Mnemonic)) {
-                                    WriteJumpInstruction(writer, inst, r11Register);
+                                    WriteJumpInstruction(writer, inst, ref context);
                                 }
                             }
                             writer.Write("\n");
+
+                            context.LastInstruction = inst;
                         }
                     }
                 }
+            }
+
+            bool IsStoreSingleStepTrampoline(Instruction inst) => context.DebugEnabled && IsLocalStore(inst, -0x8);
+            bool IsStoreBreakpointTrampoline(Instruction inst) => context.DebugEnabled && IsLocalStore(inst, -0x10);
+            bool IsReadSinglestepTrampoline(Instruction inst) => context.DebugEnabled && IsLocalLoad(inst, -0x8);
+            bool IsReadBreakpointTrampoline(Instruction inst) => context.DebugEnabled && IsLocalLoad(inst, -0x10);
+            
+            bool IsLocalStore(Instruction inst, long offset) {
+                if (inst.Mnemonic != ud_mnemonic_code.UD_Imov) return false;
+                var op = inst.Operands[0];
+                if (op.Type != ud_type.UD_OP_MEM || op.Base != ud_type.UD_R_RBP) return false;
+                return op.Value == offset;
+            }
+            bool IsLocalLoad(Instruction inst, long offset) {
+                if (inst.Mnemonic != ud_mnemonic_code.UD_Imov) return false;
+                var op = inst.Operands[1];
+                if (op.Type != ud_type.UD_OP_MEM || op.Base != ud_type.UD_R_RBP) return false;
+                return op.Value == offset;
             }
         }
 
@@ -205,18 +274,18 @@ namespace AsmExplorer {
             return callTarget;
         }
 
-        private void WriteJumpInstruction(HtmlWriter writer, Instruction inst, ulong r11) {
-            ulong callTarget = GetBranchTarget(inst, r11);
+        private void WriteJumpInstruction(HtmlWriter writer, Instruction inst, ref MethodContext context) {
+            ulong callTarget = GetBranchTarget(inst, context.R11?.LvalUQWord ?? 0);
             if (callTarget == 0)
                 return;
-            writer.Write(" ; ");
+            StartNote(writer, ref context);
             writer.AHref("go to target", "#X" + callTarget.ToString("X16"));
         }
 
-        private void WriteCallInstruction(HtmlWriter writer, Instruction inst, ulong r11) {
+        private void WriteCallInstruction(HtmlWriter writer, Instruction inst, ref MethodContext context) {
             // we should be able to find the call targets for R11/relative immediate
-            ulong callTarget = GetBranchTarget(inst, r11);
-            writer.Write(" ; ");
+            ulong callTarget = GetBranchTarget(inst, context.R11?.LvalUQWord ?? 0);
+            StartNote(writer, ref context);
             if (callTarget != 0) {
                 var target = Mono.GetJitInfo((IntPtr)callTarget);
                 if (target.Method != null) {
@@ -238,8 +307,16 @@ namespace AsmExplorer {
                 } else {
                     writer.Write("unknown target @ " + callTarget.ToString("X16"));
                 }
-            } else {
-                writer.Write("unsupported call, probably virtual");
+            } else if (context.DebugEnabled) {
+                var r11 = context.R11;
+                if (r11 != null && r11.Base == ud_type.UD_R_RBP && r11.Type == ud_type.UD_OP_MEM && r11.Value == -8) {
+                    writer.Write("check for singlestep");
+                    return;
+                }
+                writer.Write("unsupported call, probably virtual?");
+            }
+            else {
+                writer.Write("unsupported call, probably virtual?");
             }
         }
 

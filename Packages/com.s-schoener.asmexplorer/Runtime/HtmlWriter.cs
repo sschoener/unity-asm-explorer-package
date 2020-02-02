@@ -5,64 +5,64 @@ namespace AsmExplorer
 {
     public class HtmlWriter {
 
-        private XmlWriter writer;
+        private XmlWriter m_Writer;
         public HtmlWriter(XmlWriter writer) {
-            this.writer = writer;
+            m_Writer = writer;
         }
 
         public void Inline(string tag, string text) {
-            writer.WriteStartElement(tag);
-            writer.WriteString(text);
-            writer.WriteEndElement();
+            m_Writer.WriteStartElement(tag);
+            m_Writer.WriteString(text);
+            m_Writer.WriteEndElement();
         }
 
         public void Break() {
-            writer.WriteStartElement("br");
-            writer.WriteEndElement();
+            m_Writer.WriteStartElement("br");
+            m_Writer.WriteEndElement();
         }
 
         public void Inline(string tag, string text, params string[] attributes) {
-            writer.WriteStartElement(tag);
+            m_Writer.WriteStartElement(tag);
             for (int i = 0; i < attributes.Length; i += 2) {
-                writer.WriteAttributeString(attributes[i], attributes[i+1]);
+                m_Writer.WriteAttributeString(attributes[i], attributes[i+1]);
             }
-            writer.WriteString(text);
-            writer.WriteEndElement();
+            m_Writer.WriteString(text);
+            m_Writer.WriteEndElement();
         }
 
         public void Write(string s) {
-            writer.WriteString(s);
+            m_Writer.WriteString(s);
         }
 
         public TagHandle Tag(string tag) {
-            writer.WriteStartElement(tag);
-            return new TagHandle(writer);
+            m_Writer.WriteStartElement(tag);
+            return new TagHandle(m_Writer);
         }
 
         public TagHandle Tag(string tag, params string[] attributes) {
-            writer.WriteStartElement(tag);
+            m_Writer.WriteStartElement(tag);
             WriteAttributes(attributes);
-            return new TagHandle(writer);
+            return new TagHandle(m_Writer);
         }
 
         public void AHref(string content, string href, params string[] attributes) {
-            writer.WriteStartElement("a");
-            writer.WriteAttributeString("href", href);
+            m_Writer.WriteStartElement("a");
+            m_Writer.WriteAttributeString("href", href);
             WriteAttributes(attributes);
-            writer.WriteString(content);
-            writer.WriteEndElement();
+            m_Writer.WriteString(content);
+            m_Writer.WriteEndElement();
         }
 
         public void AHref(string content, string href) {
-            writer.WriteStartElement("a");
-            writer.WriteAttributeString("href", href);
-            writer.WriteString(content);
-            writer.WriteEndElement();
+            m_Writer.WriteStartElement("a");
+            m_Writer.WriteAttributeString("href", href);
+            m_Writer.WriteString(content);
+            m_Writer.WriteEndElement();
         }
 
         public void WriteAttributes(string[] attributes) {
             for (int i = 0; i < attributes.Length; i += 2) {
-                writer.WriteAttributeString(attributes[i], attributes[i+1]);
+                m_Writer.WriteAttributeString(attributes[i], attributes[i+1]);
             }
         }
 
