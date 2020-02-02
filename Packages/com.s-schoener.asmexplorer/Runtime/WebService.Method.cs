@@ -88,6 +88,9 @@ namespace AsmExplorer {
             writer.Write("Code Size in Bytes: ");
             writer.Write(jitInfo.CodeSize.ToString());
             writer.Break();
+            writer.Write("Debug mode: ");
+            writer.Write(Mono.IsMonoDebugEnabled ? "enabled" : "disabled");
+            writer.Break();
             if (jitInfo.CodeSize <= 0) {
                 return;
             }

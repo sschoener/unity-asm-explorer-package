@@ -2,8 +2,8 @@
 using UnityEngine;
 
 namespace AsmExplorer {
-    [ExecuteAlways]
     class AsmExplorerHelper : MonoBehaviour {
+#if !UNITY_EDITOR
         static WebService s_WebService;
 
         static void RestartWebservice()
@@ -42,6 +42,6 @@ namespace AsmExplorer {
         void OnApplicationQuit() {
             StopWebservice();
         }
+#endif
     }
-
 }

@@ -31,6 +31,11 @@ namespace AsmExplorer
         [DllImport(MonoDllName, EntryPoint="mono_method_get_name", CharSet = CharSet.Ansi)]
         private static extern IntPtr GetMethodName(IntPtr monoMethod);
 
+        [DllImport(MonoDllName, EntryPoint="mono_debug_enabled", CharSet = CharSet.Ansi)]
+        private static extern bool IsDebugEnabled();
+
+        public static bool IsMonoDebugEnabled => IsDebugEnabled();
+
         public static void ForceCompilation(MethodInfo method) {
             // this enforces compilation
             method.MethodHandle.GetFunctionPointer();
