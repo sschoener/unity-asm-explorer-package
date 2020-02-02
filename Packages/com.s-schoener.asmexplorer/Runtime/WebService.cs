@@ -172,7 +172,8 @@ tr:nth-child(even) {
                             writer.Write("\"");
                             writer.Write((value as string));
                             writer.Write("\"");
-                        }
+                        } else
+                            writer.Write(value.ToString());
                     }
                     if (!first)
                         writer.Write(" ) ");

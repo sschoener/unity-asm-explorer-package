@@ -5,56 +5,71 @@ using System.Reflection;
 
 namespace AsmExplorer
 {
-    public partial class WebService {
-        private void InspectType(HtmlWriter writer, string assemblyName, string typeName) {
+    public partial class WebService
+    {
+        private void InspectType(HtmlWriter writer, string assemblyName, string typeName)
+        {
             var asm = _explorer.FindAssembly(assemblyName);
-            if (asm == null) {
+            if (asm == null)
+            {
                 writer.Write("Unknown assembly name " + assemblyName);
                 return;
             }
             var type = asm.FindType(typeName);
-            if (type == null) {
+            if (type == null)
+            {
                 writer.Write("Unknown type name " + typeName + " in " + asm.FullName);
                 return;
             }
             InspectType(writer, asm, type);
         }
 
-        private void InspectType(HtmlWriter writer, Assembly assembly, Type type) {
+        private void InspectType(HtmlWriter writer, Assembly assembly, Type type)
+        {
             var asm = assembly;
-            using(writer.Tag("small")) {
+            using (writer.Tag("small"))
+            {
                 AssemblyLink(writer, asm);
                 writer.Write(" | ");
                 NamespaceLink(writer, asm.FindNamespace(type.Namespace), type.Namespace ?? "<root>");
                 // see whether this is a nested type
-                if (type.DeclaringType != null) {
+                if (type.DeclaringType != null)
+                {
                     writer.Write(" | ");
                     TypeLink(writer, type.DeclaringType);
                 }
             }
             var attr = type.GetCustomAttributes(true);
-            if (attr.Length > 0) {
+            if (attr.Length > 0)
+            {
                 writer.Break();
                 writer.Break();
                 WriteAttributes(writer, attr);
             }
-            
-            using (writer.Tag("h2")) {
+
+            using (writer.Tag("h2"))
+            {
                 writer.Write(type.PrettyName(TypeExt.NameMode.WithNamespace));
                 if (type.IsGenericType)
                     WriteGenericArguments(writer, type.GetGenericArguments(), TypeExt.NameMode.WithNamespace);
             }
 
-            if (type.IsGenericType) {
+            if (type.IsGenericType)
+            {
                 TypeLink(writer, type.GetGenericTypeDefinition(), "go to generic definition " + type.Name);
                 writer.Break();
             }
             WriteTypeDeclaration(writer, type);
-            if (type.IsClass || type.IsValueType) {
+            if (type.IsClass || type.IsValueType)
+            {
                 InspectClass(writer, type);
-            } else if (type.IsInterface) {
+            }
+            else if (type.IsInterface)
+            {
                 InspectInterface(writer, type);
-            } else if (type.IsEnum) {
+            }
+            else if (type.IsEnum)
+            {
                 InspectEnum(writer, type);
             }
         }
@@ -66,7 +81,8 @@ namespace AsmExplorer
                 writer,
                 fields.Where(f => f.IsLiteral),
                 f => writer.Write(f.Name),
-                f => {
+                f =>
+                {
                     var value = f.GetValue(null);
                     object underlyingValue = System.Convert.ChangeType(value, type.UnderlyingSystemType);
                     writer.Write(underlyingValue.ToString());
@@ -80,44 +96,64 @@ namespace AsmExplorer
             LayoutInstanceMethods(writer, type);
         }
 
-        private void InspectClass(HtmlWriter writer, Type type) {
+        private void InspectClass(HtmlWriter writer, Type type)
+        {
             var instanceCtors = type.GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
             Array.Sort(instanceCtors, (lhs, rhs) => ReflectionHelper.CompareConstructors(type, lhs, rhs));
-            writer.Inline("h4", "Constructors");
-            LayoutCtors(writer, instanceCtors);
+            if (instanceCtors.Length > 0)
+            {
+                writer.Inline("h4", "Constructors");
+                LayoutCtors(writer, instanceCtors);
+            }
 
             LayoutInstanceFields(writer, type);
             LayoutInstanceProperties(writer, type);
             LayoutInstanceMethods(writer, type);
 
             var staticCtor = type.GetConstructors(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
-            Array.Sort(instanceCtors, (lhs, rhs) => ReflectionHelper.CompareConstructors(type, lhs, rhs));
-            writer.Inline("h4", "Static Constructor");
-            LayoutCtors(writer, staticCtor);
+            if (staticCtor.Length > 0)
+            {
+                Array.Sort(instanceCtors, (lhs, rhs) => ReflectionHelper.CompareConstructors(type, lhs, rhs));
+                writer.Inline("h4", "Static Constructor");
+                LayoutCtors(writer, staticCtor);
+            }
 
-            writer.Inline("h4", "Static Fields");
             var staticFields = type.GetFields(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
-            Array.Sort(staticFields, (lhs, rhs) => ReflectionHelper.CompareFields(type, lhs, rhs));
-            LayoutStaticFields(writer, staticFields);
+            if (staticFields.Length > 0)
+            {
+                Array.Sort(staticFields, (lhs, rhs) => ReflectionHelper.CompareFields(type, lhs, rhs));
+                writer.Inline("h4", "Static Fields");
+                LayoutStaticFields(writer, staticFields);
+            }
 
-            writer.Inline("h4", "Static Properties");
+
             var staticProperties = type.GetProperties(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
-            Array.Sort(staticProperties, (lhs, rhs) => ReflectionHelper.CompareProperties(type, lhs, rhs));
-            LayoutProperties(writer, staticProperties);
+            if (staticProperties.Length > 0)
+            {
+                writer.Inline("h4", "Static Properties");
+                Array.Sort(staticProperties, (lhs, rhs) => ReflectionHelper.CompareProperties(type, lhs, rhs));
+                LayoutProperties(writer, staticProperties);
+            }
 
-            writer.Inline("h4", "Static Functions");
+
             var staticMethods = type.GetMethods(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
-            Array.Sort(staticMethods, (lhs, rhs) => ReflectionHelper.CompareMethods(type, lhs, rhs));
-            LayoutMethods(writer, staticMethods.Where(m => !m.IsSpecialName));
+            if (staticMethods.Length > 0)
+            {
+                writer.Inline("h4", "Static Functions");
+                Array.Sort(staticMethods, (lhs, rhs) => ReflectionHelper.CompareMethods(type, lhs, rhs));
+                LayoutMethods(writer, staticMethods.Where(m => !m.IsSpecialName));
+            }
 
             LayoutNestedTypes(writer, type);
         }
 
-        private void LayoutFields(HtmlWriter writer, IEnumerable<FieldInfo> fields) {
+        private void LayoutFields(HtmlWriter writer, IEnumerable<FieldInfo> fields)
+        {
             MakeTable(
                 writer,
                 fields,
-                f => {
+                f =>
+                {
                     writer.Write(f.GetAccessModifier().Pretty());
                     if (f.IsLiteral)
                         writer.Write(" const");
@@ -126,11 +162,15 @@ namespace AsmExplorer
                     else if (f.IsInitOnly)
                         writer.Write(" readonly");
                 },
-                f => {
-                    if (f.FieldType.IsByRef) {
+                f =>
+                {
+                    if (f.FieldType.IsByRef)
+                    {
                         writer.Write("ref ");
                         WriteTypeName(writer, f.FieldType.GetElementType());
-                    } else {
+                    }
+                    else
+                    {
                         WriteTypeName(writer, f.FieldType);
                     }
                 },
@@ -139,11 +179,13 @@ namespace AsmExplorer
             );
         }
 
-        private void LayoutStaticFields(HtmlWriter writer, IEnumerable<FieldInfo> fields) {
+        private void LayoutStaticFields(HtmlWriter writer, IEnumerable<FieldInfo> fields)
+        {
             MakeTable(
                 writer,
                 fields,
-                f => {
+                f =>
+                {
                     writer.Write(f.GetAccessModifier().Pretty());
                     if (f.IsLiteral)
                         writer.Write(" const");
@@ -159,9 +201,12 @@ namespace AsmExplorer
             );
         }
 
-        private void LayoutNestedTypes(HtmlWriter writer, Type type) {
-            writer.Inline("h4", "Nested Types");
+        private void LayoutNestedTypes(HtmlWriter writer, Type type)
+        {
             var nested = type.GetNestedTypes(BindingFlags.Public | BindingFlags.NonPublic);
+            if (nested.Length == 0)
+                return;
+            writer.Inline("h4", "Nested Types");
             MakeTable(
                 writer,
                 nested,
@@ -169,82 +214,109 @@ namespace AsmExplorer
             );
         }
 
-        private void LayoutInstanceMethods(HtmlWriter writer, Type type) {
+        private void LayoutInstanceMethods(HtmlWriter writer, Type type)
+        {
             var instanceMethods = type.GetMethods(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+            if (instanceMethods.Length == 0)
+                return;
+
             Array.Sort(instanceMethods, (lhs, rhs) => ReflectionHelper.CompareMethods(type, lhs, rhs));
             int split = instanceMethods.Length;
-            for (int i = 0; i < instanceMethods.Length; i++) {
-                if (instanceMethods[i].DeclaringType != type) {
+            for (int i = 0; i < instanceMethods.Length; i++)
+            {
+                if (instanceMethods[i].DeclaringType != type)
+                {
                     split = i;
                     break;
                 }
             }
-            writer.Inline("h4", "Instance Methods");
-            if (split > 0) {
+            if (split > 0)
+            {
+                writer.Inline("h4", "Instance Methods");
                 LayoutMethods(writer, ArrayView(instanceMethods, 0, split).Where(m => !m.IsSpecialName));
             }
-            writer.Inline("h4", "Inherited Methods");
-            if (split < instanceMethods.Length) {
+            if (split < instanceMethods.Length)
+            {
+                writer.Inline("h4", "Inherited Methods");
                 LayoutMethods(writer, ArrayView(instanceMethods, split).Where(m => !m.IsSpecialName));
             }
         }
 
-        private void LayoutInstanceProperties(HtmlWriter writer, Type type){
+        private void LayoutInstanceProperties(HtmlWriter writer, Type type)
+        {
             var instanceProperties = type.GetProperties(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+            if (instanceProperties.Length == 0)
+                return;
+
             Array.Sort(instanceProperties, (lhs, rhs) => ReflectionHelper.CompareProperties(type, lhs, rhs));
             int split = instanceProperties.Length;
-            for (int i = 0; i < instanceProperties.Length; i++) {
-                if (instanceProperties[i].DeclaringType != type) {
+            for (int i = 0; i < instanceProperties.Length; i++)
+            {
+                if (instanceProperties[i].DeclaringType != type)
+                {
                     split = i;
                     break;
                 }
             }
-            writer.Inline("h4", "Instance Properties");
-            if (split > 0) {
+            if (split > 0)
+            {
+                writer.Inline("h4", "Instance Properties");
                 LayoutProperties(writer, ArrayView(instanceProperties, 0, split));
             }
-            writer.Inline("h4", "Inherited Properties");
-            if (split < instanceProperties.Length) {
+            if (split < instanceProperties.Length)
+            {
+                writer.Inline("h4", "Inherited Properties");
                 LayoutProperties(writer, ArrayView(instanceProperties, split));
             }
         }
 
-        private void LayoutInstanceFields(HtmlWriter writer, Type type) {
+        private void LayoutInstanceFields(HtmlWriter writer, Type type)
+        {
             var instanceFields = type.GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+            if (instanceFields.Length == 0)
+                return;
             Array.Sort(instanceFields, (lhs, rhs) => ReflectionHelper.CompareFields(type, lhs, rhs));
             int split = instanceFields.Length;
-            for (int i = 0; i < instanceFields.Length; i++) {
-                if (instanceFields[i].DeclaringType != type) {
+            for (int i = 0; i < instanceFields.Length; i++)
+            {
+                if (instanceFields[i].DeclaringType != type)
+                {
                     split = i;
                     break;
                 }
             }
-            writer.Inline("h4", "Instance Fields");
-            if (split > 0) {
+            if (split > 0)
+            {
+                writer.Inline("h4", "Instance Fields");
                 LayoutFields(writer, ArrayView(instanceFields, 0, split));
             }
-            writer.Inline("h4", "Inherited Fields");
-            if (split < instanceFields.Length) {
+            if (split < instanceFields.Length)
+            {
+                writer.Inline("h4", "Inherited Fields");
                 LayoutFields(writer, ArrayView(instanceFields, split));
             }
         }
 
-        private void LayoutProperties(HtmlWriter writer, IEnumerable<PropertyInfo> properties) {
+        private void LayoutProperties(HtmlWriter writer, IEnumerable<PropertyInfo> properties)
+        {
             MakeTable(
                 writer,
                 properties,
                 p => WriteTypeName(writer, p.PropertyType),
-                p => {
+                p =>
+                {
                     writer.Write(p.Name);
                     writer.Write(" { ");
-                    if (p.CanRead) {
+                    if (p.CanRead)
+                    {
                         var getter = p.GetGetMethod(nonPublic: true);
                         WriteMethodPrefix(writer, getter);
                         writer.Write(" ");
                         FunctionLink(writer, getter, "get");
                         writer.Write("; ");
                     }
-                    if (p.CanWrite) {
+                    if (p.CanWrite)
+                    {
                         var setter = p.GetSetMethod(nonPublic: true);
                         WriteMethodPrefix(writer, setter);
                         writer.Write(" ");
@@ -257,26 +329,32 @@ namespace AsmExplorer
             );
         }
 
-        private void WriteGenericArguments(HtmlWriter writer, Type[] types, TypeExt.NameMode mode=TypeExt.NameMode.Short) {
+        private void WriteGenericArguments(HtmlWriter writer, Type[] types, TypeExt.NameMode mode = TypeExt.NameMode.Short)
+        {
             writer.Write("< ");
-            for (int i = 0; i < types.Length; i++) {
+            for (int i = 0; i < types.Length; i++)
+            {
                 if (i > 0)
                     writer.Write(", ");
-                if (types[i].IsGenericParameter){
+                if (types[i].IsGenericParameter)
+                {
                     var gpa = types[i].GenericParameterAttributes;
                     if ((gpa & GenericParameterAttributes.Covariant) != 0)
                         writer.Write("out ");
                     else if ((gpa & GenericParameterAttributes.Contravariant) != 0)
                         writer.Write("in ");
                     writer.Write(types[i].Name);
-                } else {
+                }
+                else
+                {
                     TypeLink(writer, types[i], types[i].PrettyName(mode));
                 }
             }
             writer.Write(" >");
         }
 
-        private void WriteGenericConstraints(HtmlWriter writer, Type generic) {
+        private void WriteGenericConstraints(HtmlWriter writer, Type generic)
+        {
             var constraints = generic.GetGenericParameterConstraints();
             if (constraints.Length == 0)
                 return;
@@ -284,29 +362,34 @@ namespace AsmExplorer
             writer.Write(generic.Name);
             writer.Write(" : ");
             var gpa = generic.GenericParameterAttributes;
-            for (int i = 0; i < constraints.Length; i++) {
+            for (int i = 0; i < constraints.Length; i++)
+            {
                 if (i > 0) writer.Write(", ");
                 WriteTypeName(writer, constraints[i]);
             }
             bool hasPrevious = constraints.Length > 0;
-            if ((gpa & GenericParameterAttributes.NotNullableValueTypeConstraint) != 0) {
+            if ((gpa & GenericParameterAttributes.NotNullableValueTypeConstraint) != 0)
+            {
                 if (hasPrevious) writer.Write(", ");
                 writer.Write("struct");
                 hasPrevious = true;
             }
-            if ((gpa & GenericParameterAttributes.ReferenceTypeConstraint) != 0) {
+            if ((gpa & GenericParameterAttributes.ReferenceTypeConstraint) != 0)
+            {
                 if (hasPrevious) writer.Write(", ");
                 writer.Write("class");
                 hasPrevious = true;
             }
-            if ((gpa & GenericParameterAttributes.DefaultConstructorConstraint) != 0) {
+            if ((gpa & GenericParameterAttributes.DefaultConstructorConstraint) != 0)
+            {
                 if (hasPrevious) writer.Write(", ");
                 writer.Write("new()");
                 hasPrevious = true;
             }
         }
 
-        private void LayoutMethods(HtmlWriter writer, IEnumerable<MethodInfo> methods) {
+        private void LayoutMethods(HtmlWriter writer, IEnumerable<MethodInfo> methods)
+        {
             MakeTable(
                 writer,
                 methods,
@@ -316,14 +399,19 @@ namespace AsmExplorer
             );
         }
 
-        private void WriteParameter(HtmlWriter writer, ParameterInfo p) {
+        private void WriteParameter(HtmlWriter writer, ParameterInfo p)
+        {
             var pt = p.ParameterType;
-            if (p.IsIn) {
+            if (p.IsIn)
+            {
                 writer.Write("in ");
             }
-            if (p.IsOut) {
+            if (p.IsOut)
+            {
                 writer.Write("out ");
-            } else if (p.ParameterType.IsByRef) {
+            }
+            else if (p.ParameterType.IsByRef)
+            {
                 if (!p.IsOut && !p.IsIn)
                     writer.Write("ref ");
                 pt = p.ParameterType.GetElementType();
@@ -333,7 +421,8 @@ namespace AsmExplorer
             writer.Write(p.Name);
         }
 
-        private void LayoutCtors(HtmlWriter writer, IEnumerable<ConstructorInfo> methods) {
+        private void LayoutCtors(HtmlWriter writer, IEnumerable<ConstructorInfo> methods)
+        {
             MakeTable(
                 writer,
                 methods,
@@ -356,32 +445,45 @@ namespace AsmExplorer
           {typeof(bool), "bool"},
           {typeof(object), "object"}
         };
-        private void WriteTypeName(HtmlWriter writer, Type type, bool full=true) {
-            if(type.IsGenericParameter) {
+        private void WriteTypeName(HtmlWriter writer, Type type, bool full = true)
+        {
+            if (type.IsGenericParameter)
+            {
                 writer.Write(type.Name);
                 return;
             }
             string name;
-            if (_specialNames.TryGetValue(type, out name)) {
+            if (_specialNames.TryGetValue(type, out name))
+            {
                 TypeLink(writer, type, name);
                 return;
-            } else if (type.IsGenericType) {
+            }
+            else if (type.IsGenericType)
+            {
                 TypeLink(writer, type, full ? type.Namespace + "." + type.Name : type.Name);
                 writer.Write("< ");
                 var arguments = type.GetGenericArguments();
-                for (int i = 0; i < arguments.Length; i++) {
+                for (int i = 0; i < arguments.Length; i++)
+                {
                     if (i > 0)
                         writer.Write(", ");
                     WriteTypeName(writer, arguments[i], full);
                 }
                 writer.Write(" >");
-            } else if (type.IsPointer) {
+            }
+            else if (type.IsPointer)
+            {
                 writer.Write("*");
                 WriteTypeName(writer, type.GetElementType(), full);
-            } else {
-                if (full) {
+            }
+            else
+            {
+                if (full)
+                {
                     name = type.FullName ?? type.Name;
-                } else {
+                }
+                else
+                {
                     name = type.Name ?? type.FullName;
                 }
                 TypeLink(writer, type, name);
@@ -389,69 +491,89 @@ namespace AsmExplorer
             }
         }
 
-        public void WriteTypeDeclaration(HtmlWriter writer, Type type) {
+        public void WriteTypeDeclaration(HtmlWriter writer, Type type)
+        {
             writer.Write(type.GetAccessModifier().Pretty());
             writer.Write(" ");
-            if (type.IsEnum) {
+            if (type.IsEnum)
+            {
                 writer.Write("enum ");
                 TypeLink(writer, type, type.Name);
-                if (type.UnderlyingSystemType != type) {
+                if (type.UnderlyingSystemType != type)
+                {
                     writer.Write(" : ");
                     WriteTypeName(writer, type);
                 }
                 return;
-            } else if (type.IsInterface) {
+            }
+            else if (type.IsInterface)
+            {
                 writer.Write("interface ");
-            } else if (type.IsClass) {
-                if (type.IsAbstract) {
+            }
+            else if (type.IsClass)
+            {
+                if (type.IsAbstract)
+                {
                     writer.Write("abstract ");
                 }
-                if (type.IsSealed) {
+                if (type.IsSealed)
+                {
                     writer.Write("sealed ");
                 }
                 writer.Write("class ");
-            } else if (type.IsValueType) {
+            }
+            else if (type.IsValueType)
+            {
                 writer.Write("struct ");
-            } else {
+            }
+            else
+            {
                 writer.Write("<non declared type> " + type.PrettyName(TypeExt.NameMode.Full));
                 return;
             }
 
             TypeLink(writer, type, type.Name);
 
-            if (type.IsGenericTypeDefinition || type.IsGenericType) {
+            if (type.IsGenericTypeDefinition || type.IsGenericType)
+            {
                 WriteGenericArguments(writer, type.GetGenericArguments(), TypeExt.NameMode.WithNamespace);
             }
 
             bool hasBaseType = false;
-            if (type.BaseType != null && type.BaseType != typeof(object)) {
+            if (type.BaseType != null && type.BaseType != typeof(object))
+            {
                 hasBaseType = true;
                 writer.Write(" : ");
                 WriteTypeName(writer, type.BaseType);
             }
             var interfaces = type.GetInterfaces();
-            if (interfaces.Length > 0 && !hasBaseType) {
+            if (interfaces.Length > 0 && !hasBaseType)
+            {
                 writer.Write(" : ");
             }
-            for (int i = 0; i < interfaces.Length; i++) {
+            for (int i = 0; i < interfaces.Length; i++)
+            {
                 if (hasBaseType || i > 0)
                     writer.Write(", ");
                 WriteTypeName(writer, interfaces[i]);
             }
 
-            if (type.IsGenericTypeDefinition) {
+            if (type.IsGenericTypeDefinition)
+            {
                 var args = type.GetGenericArguments();
                 foreach (var arg in args)
                     WriteGenericConstraints(writer, arg);
             }
         }
 
-        private static IEnumerable<T> ArrayView<T>(T[] array, int start) {
+        private static IEnumerable<T> ArrayView<T>(T[] array, int start)
+        {
             for (int i = start; i < array.Length; i++)
                 yield return array[i];
         }
 
-        private static IEnumerable<T> ArrayView<T>(T[] array, int start, int length) {
+        private static IEnumerable<T> ArrayView<T>(T[] array, int start, int length)
+        {
             int end = start + length;
             for (int i = start; i < end; i++)
                 yield return array[i];
