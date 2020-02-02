@@ -5,12 +5,16 @@ using System.Reflection;
 using SharpDisasm;
 using SharpDisasm.Udis86;
 
-namespace AsmExplorer {
-    public partial class WebService {
+namespace AsmExplorer
+{
+    public partial class WebService
+    {
         const int k_NoteColumn = 75;
 
-        void StartNote(HtmlWriter writer, ref MethodContext context) {
-            if (!context.HasLineNote) {
+        void StartNote(HtmlWriter writer, ref MethodContext context)
+        {
+            if (!context.HasLineNote)
+            {
                 for (int i = context.LineLength; i < k_NoteColumn; i++)
                     writer.Write(" ");
                 context.HasLineNote = true;
@@ -18,51 +22,65 @@ namespace AsmExplorer {
             writer.Write("; ");
         }
 
-        private void InspectMethod(HtmlWriter writer, string assemblyName, string typeName, string methodName) {
+        private void InspectMethod(HtmlWriter writer, string assemblyName, string typeName, string methodName)
+        {
             var asm = _explorer.FindAssembly(assemblyName);
-            if (asm == null) {
+            if (asm == null)
+            {
                 writer.Write("Unknown assembly name " + assemblyName);
                 return;
             }
             var type = asm.FindType(typeName);
-            if (type == null) {
+            if (type == null)
+            {
                 writer.Write("Unknown type name " + typeName + " in " + asm.FullName);
                 return;
             }
             var method = FindMethod(type, methodName);
             var ctor = FindCtor(type, methodName);
-            if (method != null) {
+            if (method != null)
+            {
                 InspectMethod(writer, asm, type, method);
-            } else if (ctor != null) {
+            }
+            else if (ctor != null)
+            {
                 InspectCtor(writer, asm, type, ctor);
-            } else {
+            }
+            else
+            {
                 writer.Write("Unknown method name " + methodName + " on type " + type.FullName + " in " + asm.FullName);
                 return;
             }
         }
 
-        private MethodInfo FindMethod(Type type, string methodName) {
+        private MethodInfo FindMethod(Type type, string methodName)
+        {
             var flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
             var methods = type.GetMethods(flags);
-            for (int i = 0; i < methods.Length; i++) {
+            for (int i = 0; i < methods.Length; i++)
+            {
                 if (methods[i].ToString() == methodName)
                     return methods[i];
             }
             return null;
         }
 
-        private ConstructorInfo FindCtor(Type type, string ctorName) {
+        private ConstructorInfo FindCtor(Type type, string ctorName)
+        {
             var flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
             var ctors = type.GetConstructors(flags);
-            for (int i = 0; i < ctors.Length; i++) {
+            for (int i = 0; i < ctors.Length; i++)
+            {
                 if (ctors[i].ToString() == ctorName)
                     return ctors[i];
             }
             return null;
         }
 
-        private void LayoutMethodHeader(HtmlWriter writer, Assembly asm, Type type, MethodBase method) {
-            using(writer.Tag("small")) {
+        private void LayoutMethodHeader(HtmlWriter writer, Assembly asm, Type type, MethodBase method)
+        {
+            using (writer.Tag("small"))
+            {
                 AssemblyLink(writer, asm);
                 writer.Write(" | ");
                 NamespaceLink(writer, asm.FindNamespace(type.Namespace), type.Namespace ?? "<root>");
@@ -70,13 +88,15 @@ namespace AsmExplorer {
                 TypeLink(writer, type);
             }
             var attr = method.GetCustomAttributes(true);
-            if (attr.Length > 0) {
+            if (attr.Length > 0)
+            {
                 writer.Break();
                 WriteAttributes(writer, attr);
             }
         }
 
-        private IEnumerable<SharpDisasm.Instruction> GetInstructions(MonoJitInfo jit) {
+        private IEnumerable<SharpDisasm.Instruction> GetInstructions(MonoJitInfo jit)
+        {
             Disassembler.Translator.IncludeBinary = true;
             Disassembler.Translator.IncludeAddress = true;
             ArchitectureMode mode = ArchitectureMode.x86_64;
@@ -92,17 +112,24 @@ namespace AsmExplorer {
 
             public Instruction LastInstruction;
             public bool DebugEnabled;
+
+            public long BreakpointTrampolineOffset;
+            public long SinglestepTrampolineOffset;
+
             public int LineLength;
             public bool HasLineNote;
         }
 
         private object _disassemblerLock = new object();
-        private void WriteDissassembly(HtmlWriter writer, MethodBase method) {
-            if (method.IsAbstract || method.ContainsGenericParameters) {
+        private void WriteDissassembly(HtmlWriter writer, MethodBase method)
+        {
+            if (method.IsAbstract || method.ContainsGenericParameters)
+            {
                 writer.Write("Cannot display disassembly for generic or abstract methods.");
                 return;
             }
-            var context = new MethodContext() {
+            var context = new MethodContext()
+            {
                 DebugEnabled = MonoDebug.IsEnabled
             };
 
@@ -116,27 +143,37 @@ namespace AsmExplorer {
             writer.Write("Debug mode: ");
             writer.Write(context.DebugEnabled ? "enabled" : "disabled");
             writer.Break();
-            if (jitInfo.CodeSize <= 0) {
+            if (jitInfo.CodeSize <= 0)
+            {
                 return;
             }
 
-            using(writer.Tag("pre")) {
-                using (writer.Tag("code")) {
+            using (writer.Tag("pre"))
+            {
+                using (writer.Tag("code"))
+                {
                     // some special help for calls using R11 and nops
                     int nops = 0;
-                    lock (_disassemblerLock) {
-                        foreach (var inst in GetInstructions(jitInfo)) {
+                    lock (_disassemblerLock)
+                    {
+                        foreach (var inst in GetInstructions(jitInfo))
+                        {
                             context.HasLineNote = false;
                             // abbreviate excessive nopping
-                            if (inst.Mnemonic == ud_mnemonic_code.UD_Inop) {
+                            if (inst.Mnemonic == ud_mnemonic_code.UD_Inop)
+                            {
                                 nops++;
                                 context.LastInstruction = inst;
                                 continue;
                             }
-                            if (nops > 0) {
-                                if (nops == 1) {
+                            if (nops > 0)
+                            {
+                                if (nops == 1)
+                                {
                                     writer.Write(context.LastInstruction.ToString());
-                                } else {
+                                }
+                                else
+                                {
                                     var str = context.LastInstruction.ToString();
                                     writer.Write(str);
                                     context.LineLength = str.Length;
@@ -151,37 +188,52 @@ namespace AsmExplorer {
                                 writer.Write("\n");
                             }
 
-                            using(writer.Tag("span").With("id", "X" + Address(inst).ToString("X16"))) {
+                            using (writer.Tag("span").With("id", "X" + Address(inst).ToString("X16")))
+                            {
                                 var str = inst.ToString();
                                 context.LineLength = str.Length;
                                 writer.Write(str);
 
-                                if (inst.Mnemonic == ud_mnemonic_code.UD_Imov) {
+                                if (inst.Mnemonic == ud_mnemonic_code.UD_Imov)
+                                {
                                     var op0 = inst.Operands[0];
                                     var op1 = inst.Operands[1];
                                     // call targets on x64 are frequently placed in R11, so let's ensure that we catch that.
-                                    if (op0.Type == ud_type.UD_OP_REG && op0.Base == ud_type.UD_R_R11)
+                                    if (IsR11(op0))
                                         context.R11 = op1;
-                                    if (IsStoreSingleStepTrampoline(inst)) {
-                                        StartNote(writer, ref context);
-                                        writer.Write("write singlestep trampoline");
+                                    if (context.DebugEnabled)
+                                    {
+                                        if (IsLocalStore(inst) && IsR11(op1) && context.R11 != null && context.R11.Type == ud_type.UD_OP_IMM) {
+                                            if (context.BreakpointTrampolineOffset == 0) {
+                                                context.BreakpointTrampolineOffset = op0.Value;
+                                                StartNote(writer, ref context);
+                                                writer.Write("write breakpoint trampoline");
+                                            }
+                                            else if (context.SinglestepTrampolineOffset == 0) {
+                                                context.SinglestepTrampolineOffset = op0.Value;
+                                                StartNote(writer, ref context);
+                                                writer.Write("write singlestep trampoline");
+                                            }
+                                        }
+                                        else if (IsReadSinglestepTrampoline(inst))
+                                        {
+                                            StartNote(writer, ref context);
+                                            writer.Write("read singlestep trampoline");
+                                        }
+                                        else if (IsReadBreakpointTrampoline(inst))
+                                        {
+                                            StartNote(writer, ref context);
+                                            writer.Write("read breakpoint trampoline");
+                                        }
                                     }
-                                    else if (IsReadSinglestepTrampoline(inst)) {
-                                        StartNote(writer, ref context);
-                                        writer.Write("read singlestep trampoline");
-                                    }
-                                    else if (IsStoreBreakpointTrampoline(inst)) {
-                                        StartNote(writer, ref context);
-                                        writer.Write("write breakpoint trampoline");
-                                    }
-                                    else if (IsReadBreakpointTrampoline(inst)) {
-                                        StartNote(writer, ref context);
-                                        writer.Write("read breakpoint trampoline");
-                                    }
-                                } else if (inst.Mnemonic == ud_mnemonic_code.UD_Icall) {
+                                }
+                                else if (inst.Mnemonic == ud_mnemonic_code.UD_Icall)
+                                {
                                     WriteCallInstruction(writer, inst, ref context);
                                     context.R11 = null;
-                                } else if (IsJump(inst.Mnemonic)) {
+                                }
+                                else if (IsJump(inst.Mnemonic))
+                                {
                                     WriteJumpInstruction(writer, inst, ref context);
                                 }
                             }
@@ -193,31 +245,30 @@ namespace AsmExplorer {
                 }
             }
 
-            bool IsStoreSingleStepTrampoline(Instruction inst) => context.DebugEnabled && IsLocalStore(inst, -0x8);
-            bool IsStoreBreakpointTrampoline(Instruction inst) => context.DebugEnabled && IsLocalStore(inst, -0x10);
-            bool IsReadSinglestepTrampoline(Instruction inst) => context.DebugEnabled && IsLocalLoad(inst, -0x8);
-            bool IsReadBreakpointTrampoline(Instruction inst) => context.DebugEnabled && IsLocalLoad(inst, -0x10);
-            
-            bool IsLocalStore(Instruction inst, long offset) {
+            bool IsR11(Operand op) => op.Type == ud_type.UD_OP_REG && op.Base == ud_type.UD_R_R11;
+            bool IsReadSinglestepTrampoline(Instruction inst) => IsLocalLoadOffset(inst, context.SinglestepTrampolineOffset);
+            bool IsReadBreakpointTrampoline(Instruction inst) => IsLocalLoadOffset(inst, context.BreakpointTrampolineOffset);
+
+            bool IsLocalInteraction(Instruction inst, int operand)
+            {
                 if (inst.Mnemonic != ud_mnemonic_code.UD_Imov) return false;
-                var op = inst.Operands[0];
-                if (op.Type != ud_type.UD_OP_MEM || op.Base != ud_type.UD_R_RBP) return false;
-                return op.Value == offset;
+                var op = inst.Operands[operand];
+                return op.Type == ud_type.UD_OP_MEM && op.Base == ud_type.UD_R_RBP;
             }
-            bool IsLocalLoad(Instruction inst, long offset) {
-                if (inst.Mnemonic != ud_mnemonic_code.UD_Imov) return false;
-                var op = inst.Operands[1];
-                if (op.Type != ud_type.UD_OP_MEM || op.Base != ud_type.UD_R_RBP) return false;
-                return op.Value == offset;
-            }
+            bool IsLocalStore(Instruction inst) => IsLocalInteraction(inst, 0);
+            bool IsLocalLoad(Instruction inst) => IsLocalInteraction(inst, 1);
+            bool IsLocalLoadOffset(Instruction inst, long offset) => IsLocalLoad(inst) && inst.Operands[1].Value == offset;
         }
 
-        private static ulong Address(Instruction inst) {
+        private static ulong Address(Instruction inst)
+        {
             return inst.PC - (ulong)inst.Bytes.Length;
         }
 
-        private static bool IsJump(ud_mnemonic_code mnemonic) {
-            switch(mnemonic) {
+        private static bool IsJump(ud_mnemonic_code mnemonic)
+        {
+            switch (mnemonic)
+            {
                 case ud_mnemonic_code.UD_Ija:
                 case ud_mnemonic_code.UD_Ijae:
                 case ud_mnemonic_code.UD_Ijb:
@@ -235,7 +286,7 @@ namespace AsmExplorer {
                 case ud_mnemonic_code.UD_Ijnz:
                 case ud_mnemonic_code.UD_Ijo:
                 case ud_mnemonic_code.UD_Ijp:
-                case ud_mnemonic_code.UD_Ijrcxz:                
+                case ud_mnemonic_code.UD_Ijrcxz:
                 case ud_mnemonic_code.UD_Ijs:
                 case ud_mnemonic_code.UD_Ijz:
                     return true;
@@ -244,37 +295,58 @@ namespace AsmExplorer {
             }
         }
 
-        private ulong GetBranchTarget(Instruction inst, ulong r11) {
+        private ulong GetBranchTarget(Instruction inst, ulong r11)
+        {
             var op0 = inst.Operands[0];
             ulong callTarget = 0;
-            if (op0.Type == ud_type.UD_OP_REG && op0.Base == ud_type.UD_R_R11) {
+            if (op0.Type == ud_type.UD_OP_REG && op0.Base == ud_type.UD_R_R11)
+            {
                 callTarget = r11;
-            } else if (op0.Type == ud_type.UD_OP_IMM) {
-                if (op0.Size == 8) {
+            }
+            else if (op0.Type == ud_type.UD_OP_IMM)
+            {
+                if (op0.Size == 8)
+                {
                     callTarget = op0.LvalByte; // doesn't happen
-                } else if (op0.Size == 16) {
+                }
+                else if (op0.Size == 16)
+                {
                     callTarget = op0.LvalUWord; // doesn't happen
-                } else if (op0.Size == 32) {
+                }
+                else if (op0.Size == 32)
+                {
                     callTarget = inst.PC + op0.LvalUDWord;
-                } else if (op0.Size == 64) {
+                }
+                else if (op0.Size == 64)
+                {
                     callTarget = op0.LvalUQWord;
                 }
-            } else if (op0.Type == ud_type.UD_OP_JIMM) {
-                long offset = (long) inst.PC;
-                if (op0.Size == 8) {
-                    callTarget = (ulong) (offset + op0.LvalSByte);
-                } else if (op0.Size == 16) {
-                    callTarget = (ulong) (offset + op0.LvalSWord);
-                } else if (op0.Size == 32) {
-                    callTarget = (ulong) (offset + op0.LvalSDWord);
-                } else if (op0.Size == 64) {
-                    callTarget = (ulong) (offset + op0.LvalSQWord);
+            }
+            else if (op0.Type == ud_type.UD_OP_JIMM)
+            {
+                long offset = (long)inst.PC;
+                if (op0.Size == 8)
+                {
+                    callTarget = (ulong)(offset + op0.LvalSByte);
+                }
+                else if (op0.Size == 16)
+                {
+                    callTarget = (ulong)(offset + op0.LvalSWord);
+                }
+                else if (op0.Size == 32)
+                {
+                    callTarget = (ulong)(offset + op0.LvalSDWord);
+                }
+                else if (op0.Size == 64)
+                {
+                    callTarget = (ulong)(offset + op0.LvalSQWord);
                 }
             }
             return callTarget;
         }
 
-        private void WriteJumpInstruction(HtmlWriter writer, Instruction inst, ref MethodContext context) {
+        private void WriteJumpInstruction(HtmlWriter writer, Instruction inst, ref MethodContext context)
+        {
             ulong callTarget = GetBranchTarget(inst, context.R11?.LvalUQWord ?? 0);
             if (callTarget == 0)
                 return;
@@ -282,47 +354,62 @@ namespace AsmExplorer {
             writer.AHref("go to target", "#X" + callTarget.ToString("X16"));
         }
 
-        private void WriteCallInstruction(HtmlWriter writer, Instruction inst, ref MethodContext context) {
+        private void WriteCallInstruction(HtmlWriter writer, Instruction inst, ref MethodContext context)
+        {
             // we should be able to find the call targets for R11/relative immediate
             ulong callTarget = GetBranchTarget(inst, context.R11?.LvalUQWord ?? 0);
             StartNote(writer, ref context);
-            if (callTarget != 0) {
+            if (callTarget != 0)
+            {
                 var target = Mono.GetJitInfo((IntPtr)callTarget);
-                if (target.Method != null) {
-                    if (target.Method.IsConstructor) {
+                if (target.Method != null)
+                {
+                    if (target.Method.IsConstructor)
+                    {
                         WriteCtorPrefix(writer, target.Method);
                         writer.Write(" ");
                         WriteCtorDeclaration(writer, target.Method as ConstructorInfo);
-                    } else if (target.Method != null) {
+                    }
+                    else if (target.Method != null)
+                    {
                         WriteMethodPrefix(writer, target.Method);
                         writer.Write(" ");
                         WriteMethodReturnType(writer, target.Method as MethodInfo);
                         writer.Write(" ");
-                        if (target.Method.DeclaringType != null) {
+                        if (target.Method.DeclaringType != null)
+                        {
                             TypeLink(writer, target.Method.DeclaringType);
                             writer.Write(".");
                         }
                         WriteMethodDeclaration(writer, target.Method as MethodInfo);
                     }
-                } else {
+                }
+                else
+                {
                     writer.Write("unknown target @ " + callTarget.ToString("X16"));
                 }
-            } else if (context.DebugEnabled) {
+            }
+            else if (context.DebugEnabled)
+            {
                 var r11 = context.R11;
-                if (r11 != null && r11.Base == ud_type.UD_R_RBP && r11.Type == ud_type.UD_OP_MEM && r11.Value == -8) {
+                if (r11 != null && r11.Base == ud_type.UD_R_RBP && r11.Type == ud_type.UD_OP_MEM && r11.Value == context.SinglestepTrampolineOffset)
+                {
                     writer.Write("check for singlestep");
                     return;
                 }
                 writer.Write("unsupported call, probably virtual?");
             }
-            else {
+            else
+            {
                 writer.Write("unsupported call, probably virtual?");
             }
         }
 
-        private void InspectMethod(HtmlWriter writer, Assembly assembly, Type type, MethodInfo method) {
+        private void InspectMethod(HtmlWriter writer, Assembly assembly, Type type, MethodInfo method)
+        {
             LayoutMethodHeader(writer, assembly, type, method);
-            using (writer.Tag("h2")) {
+            using (writer.Tag("h2"))
+            {
                 WriteMethodPrefix(writer, method);
                 writer.Write(" ");
                 WriteMethodReturnType(writer, method);
@@ -332,9 +419,11 @@ namespace AsmExplorer {
             WriteDissassembly(writer, method);
         }
 
-        private void InspectCtor(HtmlWriter writer, Assembly assembly, Type type, ConstructorInfo ctor) {
+        private void InspectCtor(HtmlWriter writer, Assembly assembly, Type type, ConstructorInfo ctor)
+        {
             LayoutMethodHeader(writer, assembly, type, ctor);
-            using (writer.Tag("h2")) {
+            using (writer.Tag("h2"))
+            {
                 WriteCtorPrefix(writer, ctor);
                 writer.Write(" ");
                 WriteCtorDeclaration(writer, ctor);
@@ -342,80 +431,103 @@ namespace AsmExplorer {
             WriteDissassembly(writer, ctor);
         }
 
-        private void WriteCtorPrefix(HtmlWriter writer, MethodBase c) {
+        private void WriteCtorPrefix(HtmlWriter writer, MethodBase c)
+        {
             writer.Write(c.GetAccessModifier().Pretty());
         }
 
-        private void WriteCtorDeclaration(HtmlWriter writer, ConstructorInfo c) {
+        private void WriteCtorDeclaration(HtmlWriter writer, ConstructorInfo c)
+        {
             TypeLink(writer, c.DeclaringType, c.DeclaringType.Name);
             writer.Write(" ");
             FunctionLink(writer, c, c.Name);
 
-            if (c.IsGenericMethodDefinition) {
+            if (c.IsGenericMethodDefinition)
+            {
                 WriteGenericArguments(writer, c.GetGenericArguments());
             }
 
             writer.Write(" (");
             var ps = c.GetParameters();
-            for (int i = 0; i < ps.Length; i++) {
-                if (i > 0) {
+            for (int i = 0; i < ps.Length; i++)
+            {
+                if (i > 0)
+                {
                     writer.Write(", ");
                 }
                 WriteParameter(writer, ps[i]);
             }
             writer.Write(" )");
 
-            if (c.IsGenericMethodDefinition) {
+            if (c.IsGenericMethodDefinition)
+            {
                 var args = c.GetGenericArguments();
                 for (int i = 0; i < args.Length; i++)
                     WriteGenericConstraints(writer, args[i]);
             }
         }
 
-        private void WriteMethodReturnType(HtmlWriter writer, MethodInfo m) {
-            if (m.ReturnType.IsByRef) {
+        private void WriteMethodReturnType(HtmlWriter writer, MethodInfo m)
+        {
+            if (m.ReturnType.IsByRef)
+            {
                 writer.Write("ref ");
                 WriteTypeName(writer, m.ReturnType.GetElementType());
-            } else {
+            }
+            else
+            {
                 WriteTypeName(writer, m.ReturnType);
             }
         }
 
-        private void WriteMethodDeclaration(HtmlWriter writer, MethodInfo m) {
+        private void WriteMethodDeclaration(HtmlWriter writer, MethodInfo m)
+        {
             FunctionLink(writer, m, m.Name);
 
-            if (m.IsGenericMethodDefinition) {
+            if (m.IsGenericMethodDefinition)
+            {
                 WriteGenericArguments(writer, m.GetGenericArguments());
             }
 
             writer.Write(" ( ");
             var ps = m.GetParameters();
-            for (int i = 0; i < ps.Length; i++) {
-                if (i > 0) {
+            for (int i = 0; i < ps.Length; i++)
+            {
+                if (i > 0)
+                {
                     writer.Write(", ");
                 }
                 WriteParameter(writer, ps[i]);
             }
             writer.Write(" )");
 
-            if (m.IsGenericMethodDefinition) {
+            if (m.IsGenericMethodDefinition)
+            {
                 var args = m.GetGenericArguments();
                 for (int i = 0; i < args.Length; i++)
                     WriteGenericConstraints(writer, args[i]);
             }
         }
 
-        private void WriteMethodPrefix(HtmlWriter writer, MethodBase method) {
+        private void WriteMethodPrefix(HtmlWriter writer, MethodBase method)
+        {
             writer.Write(method.GetAccessModifier().Pretty());
             if ((method.GetMethodImplementationFlags() & MethodImplAttributes.InternalCall) != 0)
                 writer.Write(" extern");
-            else if (method.IsAbstract) {
+            else if (method.IsAbstract)
+            {
                 writer.Write(" abstract");
-            } else if (method.IsFinal) {
+            }
+            else if (method.IsFinal)
+            {
                 writer.Write(" sealed");
-            } else if (method.IsVirtual) {
+            }
+            else if (method.IsVirtual)
+            {
                 writer.Write(" virtual");
-            } else if (method.IsStatic) {
+            }
+            else if (method.IsStatic)
+            {
                 writer.Write(" static");
             }
         }
