@@ -397,11 +397,11 @@ namespace AsmExplorer
                     writer.Write("check for singlestep");
                     return;
                 }
-                writer.Write("unsupported call, probably virtual?");
+                writer.Write("unknown target; native, virtual, or unpatched JIT trampoline");
             }
             else
             {
-                writer.Write("unsupported call, probably virtual?");
+                writer.Write("unknown target; native, virtual, or unpatched JIT trampoline");
             }
         }
 
