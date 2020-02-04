@@ -512,14 +512,12 @@ namespace AsmExplorer
             }
             else if (type.IsClass)
             {
-                if (type.IsAbstract)
-                {
+                if (type.IsAbstract && type.IsSealed)
+                    writer.Write("static ");
+                else if (type.IsAbstract)
                     writer.Write("abstract ");
-                }
-                if (type.IsSealed)
-                {
+                else if (type.IsSealed)
                     writer.Write("sealed ");
-                }
                 writer.Write("class ");
             }
             else if (type.IsValueType)

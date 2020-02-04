@@ -1,6 +1,5 @@
 using System;
-using System.Collections.Generic;
-using System.Reflection;
+using System.Linq;
 
 namespace AsmExplorer
 {
@@ -19,19 +18,30 @@ namespace AsmExplorer
             InspectNamespace(writer, ns);
         }
 
+        enum TypeKind {
+
+        }
+
         private void InspectNamespace(HtmlWriter writer, Namespace ns) {
             using (writer.Tag("small")) {
                 AssemblyLink(writer, ns.Assembly);
             }
             writer.Inline("h2", ns.FullName);
-            MakeTable(
-                writer,
-                ns.Types,
-                t => WriteShortTypeDeclaration(writer, t)
-            );
+            
+
+            foreach (var group in ns.Types.GroupBy(t => TypeKinds.Classify(t)).OrderBy(group => group.Key)) {
+                writer.Inline("h4", group.Key.KindName());
+                MakeTable(
+                    writer,
+                    group.OrderBy(t => t.Name),
+                    t => WriteShortTypeDeclaration(writer, t)
+                );
+            }
         }
 
         private void WriteShortTypeDeclaration(HtmlWriter writer, Type type) {
+            writer.Write(type.GetAccessModifier().Pretty());
+            writer.Write(" ");
             if (type.IsEnum) {
                 writer.Write("enum ");
             } else if (type.IsInterface) {
@@ -39,6 +49,12 @@ namespace AsmExplorer
             } else if (type.IsValueType) {
                 writer.Write("struct ");
             } else if (type.IsClass) {
+                if (type.IsAbstract && type.IsSealed)
+                    writer.Write("static ");
+                else if (type.IsAbstract)
+                    writer.Write("abstract ");
+                else if (type.IsSealed)
+                    writer.Write("sealed ");
                 writer.Write("class ");
             }
             TypeLink(writer, type, type.Name);

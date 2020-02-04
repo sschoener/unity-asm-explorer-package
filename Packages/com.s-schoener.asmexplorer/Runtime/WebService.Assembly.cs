@@ -1,6 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Reflection;
+using System.Linq;
 
 namespace AsmExplorer
 {
@@ -22,7 +20,7 @@ namespace AsmExplorer
             writer.Inline("h4", "Namespaces");
             MakeTable(
                 writer,
-                asm.Namespaces,
+                asm.Namespaces.OrderBy(n => n.Name),
                 n => NamespaceLink(writer, n, n.RelativeName)
             );
             var unnamed = asm.FindNamespace("");
