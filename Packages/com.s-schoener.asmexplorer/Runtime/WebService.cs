@@ -188,17 +188,95 @@ tr:nth-child(even) {
         }
 
 
-        private void FunctionLink(HtmlWriter writer, MethodBase method) {
+#region encode/decode
+        const string k_MethodEncodingGenericArgSeparator = ";;;with;;;";
+
+        private string EncodeMethod(MethodInfo method)
+        {
+            if (method.IsGenericMethod && !method.IsGenericMethodDefinition) {
+                var genericDefinition = method.GetGenericMethodDefinition();
+                string methodId = genericDefinition.ToString();
+                var arguments = method.GetGenericArguments();
+                methodId += k_MethodEncodingGenericArgSeparator + string.Join(";", arguments.Select(EncodeType));
+                return methodId;
+            } else {
+                return method.ToString();
+            }
+        }
+
+        private MethodInfo DecodeMethod(Type type, string encodedMethod)
+        {
+            int separator = encodedMethod.IndexOf(k_MethodEncodingGenericArgSeparator);
+            Type[] genericArguments;
+            string lookUpKey;
+            if (separator < 0) {
+                lookUpKey = encodedMethod;
+                genericArguments = null;
+            }
+            else
+            {
+                lookUpKey = encodedMethod.Substring(0, separator);
+                var arguments = encodedMethod.Substring(separator + k_MethodEncodingGenericArgSeparator.Length).Split(new [] {';'}, StringSplitOptions.RemoveEmptyEntries);
+                genericArguments = arguments.Select(DecodeType).ToArray();
+            }
+
+            var flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
+            var methods = type.GetMethods(flags);
+            for (int i = 0; i < methods.Length; i++)
+            {
+                if (methods[i].ToString() == lookUpKey) {
+                    if (genericArguments != null)
+                        return methods[i].MakeGenericMethod(genericArguments);
+                    return methods[i];
+                }
+            }
+            return null;
+        }
+
+        private string EncodeCtor(ConstructorInfo ctor) => ctor.ToString();
+
+        private ConstructorInfo DecodeCtor(Type type, string ctorName)
+        {
+            var flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
+            var ctors = type.GetConstructors(flags);
+            for (int i = 0; i < ctors.Length; i++)
+            {
+                if (ctors[i].ToString() == ctorName)
+                    return ctors[i];
+            }
+            return null;
+        }
+
+        private string EncodeType(Type type) => type.AssemblyQualifiedName;
+        private Type DecodeType(string encodedType) => Type.GetType(encodedType, false, false);
+#endregion
+
+        private void FunctionLink(HtmlWriter writer, MethodInfo method) {
             FunctionLink(writer, method, method.DeclaringType.Name + "." + method.Name);
         }
 
-        private void FunctionLink(HtmlWriter writer, MethodBase method, string txt) {
+        private void FunctionLink(HtmlWriter writer, MethodInfo method, string txt) {
             writer.AHref(txt,
                 Html.Url(
                     _completePrefix + "inspect",
                     "assembly", method.DeclaringType.Assembly.FullName,
                     "type", method.DeclaringType.FullName,
-                    "method", method.ToString()
+                    "method", EncodeMethod(method)
+                )
+            );
+        }
+
+        private void FunctionLink(HtmlWriter writer, ConstructorInfo method) {
+            FunctionLink(writer, method, method.DeclaringType.Name + "." + method.Name);
+        }
+
+        private void FunctionLink(HtmlWriter writer, ConstructorInfo method, string txt) {
+            writer.AHref(txt,
+                Html.Url(
+                    _completePrefix + "inspect",
+                    "assembly", method.DeclaringType.Assembly.FullName,
+                    "type", method.DeclaringType.FullName,
+                    "method", EncodeCtor(method)
                 )
             );
         }

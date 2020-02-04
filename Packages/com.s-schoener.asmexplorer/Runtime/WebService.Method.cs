@@ -9,7 +9,7 @@ namespace AsmExplorer
 {
     public partial class WebService
     {
-        const int k_NoteColumn = 75;
+        const int k_NoteColumn = 77;
 
         void StartNote(HtmlWriter writer, ref MethodContext context)
         {
@@ -22,7 +22,7 @@ namespace AsmExplorer
             writer.Write("; ");
         }
 
-        private void InspectMethod(HtmlWriter writer, string assemblyName, string typeName, string methodName)
+        private void InspectMethod(HtmlWriter writer, string assemblyName, string typeName, string encodedMethod)
         {
             var asm = _explorer.FindAssembly(assemblyName);
             if (asm == null)
@@ -36,8 +36,8 @@ namespace AsmExplorer
                 writer.Write("Unknown type name " + typeName + " in " + asm.FullName);
                 return;
             }
-            var method = FindMethod(type, methodName);
-            var ctor = FindCtor(type, methodName);
+            var method = DecodeMethod(type, encodedMethod);
+            var ctor = DecodeCtor(type, encodedMethod);
             if (method != null)
             {
                 InspectMethod(writer, asm, type, method);
@@ -48,33 +48,11 @@ namespace AsmExplorer
             }
             else
             {
-                writer.Write("Unknown method name " + methodName + " on type " + type.FullName + " in " + asm.FullName);
+                writer.Write("Unknown method name " + encodedMethod + " on type " + type.FullName + " in " + asm.FullName);
+                var methods = string.Join("<br/>", type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static).Select(x => x.ToString()));
+                writer.Write("Have to following methods: " + methods);
                 return;
             }
-        }
-
-        private MethodInfo FindMethod(Type type, string methodName)
-        {
-            var flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
-            var methods = type.GetMethods(flags);
-            for (int i = 0; i < methods.Length; i++)
-            {
-                if (methods[i].ToString() == methodName)
-                    return methods[i];
-            }
-            return null;
-        }
-
-        private ConstructorInfo FindCtor(Type type, string ctorName)
-        {
-            var flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
-            var ctors = type.GetConstructors(flags);
-            for (int i = 0; i < ctors.Length; i++)
-            {
-                if (ctors[i].ToString() == ctorName)
-                    return ctors[i];
-            }
-            return null;
         }
 
         private void LayoutMethodHeader(HtmlWriter writer, Assembly asm, Type type, MethodBase method)
@@ -95,7 +73,7 @@ namespace AsmExplorer
             }
         }
 
-        private IEnumerable<SharpDisasm.Instruction> GetInstructions(MonoJitInfo jit)
+        private IEnumerable<Instruction> GetInstructions(MonoJitInfo jit)
         {
             Disassembler.Translator.IncludeBinary = true;
             Disassembler.Translator.IncludeAddress = true;
@@ -112,6 +90,7 @@ namespace AsmExplorer
 
             public Instruction LastInstruction;
             public bool DebugEnabled;
+            public bool HasBasePointer;
 
             public long BreakpointTrampolineOffset;
             public long SinglestepTrampolineOffset;
@@ -154,11 +133,23 @@ namespace AsmExplorer
                 {
                     // some special help for calls using R11 and nops
                     int nops = 0;
+                    bool first = true;
                     lock (_disassemblerLock)
                     {
                         foreach (var inst in GetInstructions(jitInfo))
                         {
                             context.HasLineNote = false;
+
+                            if (first) {
+                                context.HasBasePointer =
+                                    inst.Mnemonic == ud_mnemonic_code.UD_Ipush &&
+                                    inst.Operands[0].Type == ud_type.UD_OP_REG &&
+                                    inst.Operands[0].Base == ud_type.UD_R_RBP;
+                                first = false;
+                            }
+
+
+
                             // abbreviate excessive nopping
                             if (inst.Mnemonic == ud_mnemonic_code.UD_Inop)
                             {
@@ -227,6 +218,14 @@ namespace AsmExplorer
                                         }
                                     }
                                 }
+                                else if (inst.Mnemonic == ud_mnemonic_code.UD_Iadd)
+                                {
+                                    var op1 = inst.Operands[1];
+                                    if (op1.Type == ud_type.UD_OP_IMM) {
+                                        StartNote(writer, ref context);
+                                        writer.Write(op1.Value.ToString());
+                                    }
+                                }
                                 else if (inst.Mnemonic == ud_mnemonic_code.UD_Icall)
                                 {
                                     WriteCallInstruction(writer, inst, ref context);
@@ -248,12 +247,12 @@ namespace AsmExplorer
             bool IsR11(Operand op) => op.Type == ud_type.UD_OP_REG && op.Base == ud_type.UD_R_R11;
             bool IsReadSinglestepTrampoline(Instruction inst) => IsLocalLoadOffset(inst, context.SinglestepTrampolineOffset);
             bool IsReadBreakpointTrampoline(Instruction inst) => IsLocalLoadOffset(inst, context.BreakpointTrampolineOffset);
-
+            ud_type StackFrameRegister() => context.HasBasePointer ? ud_type.UD_R_RBP : ud_type.UD_R_RSP;
             bool IsLocalInteraction(Instruction inst, int operand)
             {
                 if (inst.Mnemonic != ud_mnemonic_code.UD_Imov) return false;
                 var op = inst.Operands[operand];
-                return op.Type == ud_type.UD_OP_MEM && op.Base == ud_type.UD_R_RBP;
+                return op.Type == ud_type.UD_OP_MEM && op.Base == StackFrameRegister();
             }
             bool IsLocalStore(Instruction inst) => IsLocalInteraction(inst, 0);
             bool IsLocalLoad(Instruction inst) => IsLocalInteraction(inst, 1);
@@ -392,7 +391,8 @@ namespace AsmExplorer
             else if (context.DebugEnabled)
             {
                 var r11 = context.R11;
-                if (r11 != null && r11.Base == ud_type.UD_R_RBP && r11.Type == ud_type.UD_OP_MEM && r11.Value == context.SinglestepTrampolineOffset)
+                ud_type stackFrameRegister = context.HasBasePointer ? ud_type.UD_R_RBP : ud_type.UD_R_RSP;
+                if (r11 != null && r11.Base == stackFrameRegister && r11.Type == ud_type.UD_OP_MEM && r11.Value == context.SinglestepTrampolineOffset)
                 {
                     writer.Write("check for singlestep");
                     return;
