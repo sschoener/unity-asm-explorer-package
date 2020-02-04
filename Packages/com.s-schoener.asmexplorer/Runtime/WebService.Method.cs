@@ -49,8 +49,6 @@ namespace AsmExplorer
             else
             {
                 writer.Write("Unknown method name " + encodedMethod + " on type " + type.FullName + " in " + asm.FullName);
-                var methods = string.Join("<br/>", type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static).Select(x => x.ToString()));
-                writer.Write("Have to following methods: " + methods);
                 return;
             }
         }

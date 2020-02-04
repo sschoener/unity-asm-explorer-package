@@ -15,9 +15,9 @@ namespace AsmExplorer
         private const BindingFlags AllInstanceBindings = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
         private const BindingFlags AllStaticBindings = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
         private const BindingFlags AllBindings = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
-        private WebServer _webServer;
-        private string _completePrefix;
-        private Explorer _explorer;
+        private readonly WebServer _webServer;
+        private readonly string _completePrefix;
+        private readonly Explorer _explorer;
         public WebService(Explorer explorer, string prefix, int port=8080) {
             _explorer = explorer;
             _completePrefix = "http://localhost:" + port + "/" + prefix + "/";
@@ -220,8 +220,7 @@ tr:nth-child(even) {
                 genericArguments = arguments.Select(DecodeType).ToArray();
             }
 
-            var flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
-            var methods = type.GetMethods(flags);
+            var methods = type.GetMethods(AllBindings);
             for (int i = 0; i < methods.Length; i++)
             {
                 if (methods[i].ToString() == lookUpKey) {
@@ -237,8 +236,7 @@ tr:nth-child(even) {
 
         private ConstructorInfo DecodeCtor(Type type, string ctorName)
         {
-            var flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
-            var ctors = type.GetConstructors(flags);
+            var ctors = type.GetConstructors(AllBindings);
             for (int i = 0; i < ctors.Length; i++)
             {
                 if (ctors[i].ToString() == ctorName)

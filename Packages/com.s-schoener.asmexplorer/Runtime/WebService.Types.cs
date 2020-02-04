@@ -98,7 +98,7 @@ namespace AsmExplorer
 
         private void InspectClass(HtmlWriter writer, Type type)
         {
-            var instanceCtors = type.GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+            var instanceCtors = type.GetConstructors(AllInstanceBindings);
             Array.Sort(instanceCtors, (lhs, rhs) => ReflectionHelper.CompareConstructors(type, lhs, rhs));
             if (instanceCtors.Length > 0)
             {
@@ -110,7 +110,7 @@ namespace AsmExplorer
             LayoutInstanceProperties(writer, type);
             LayoutInstanceMethods(writer, type);
 
-            var staticCtor = type.GetConstructors(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
+            var staticCtor = type.GetConstructors(AllStaticBindings);
             if (staticCtor.Length > 0)
             {
                 Array.Sort(instanceCtors, (lhs, rhs) => ReflectionHelper.CompareConstructors(type, lhs, rhs));
@@ -118,7 +118,7 @@ namespace AsmExplorer
                 LayoutCtors(writer, staticCtor);
             }
 
-            var staticFields = type.GetFields(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
+            var staticFields = type.GetFields(AllStaticBindings);
             if (staticFields.Length > 0)
             {
                 Array.Sort(staticFields, (lhs, rhs) => ReflectionHelper.CompareFields(type, lhs, rhs));
@@ -127,7 +127,7 @@ namespace AsmExplorer
             }
 
 
-            var staticProperties = type.GetProperties(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
+            var staticProperties = type.GetProperties(AllStaticBindings);
             if (staticProperties.Length > 0)
             {
                 writer.Inline("h4", "Static Properties");
@@ -136,7 +136,7 @@ namespace AsmExplorer
             }
 
 
-            var staticMethods = type.GetMethods(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
+            var staticMethods = type.GetMethods(AllStaticBindings);
             if (staticMethods.Length > 0)
             {
                 writer.Inline("h4", "Static Functions");
@@ -216,7 +216,7 @@ namespace AsmExplorer
 
         private void LayoutInstanceMethods(HtmlWriter writer, Type type)
         {
-            var instanceMethods = type.GetMethods(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+            var instanceMethods = type.GetMethods(AllInstanceBindings);
             if (instanceMethods.Length == 0)
                 return;
 
@@ -244,7 +244,7 @@ namespace AsmExplorer
 
         private void LayoutInstanceProperties(HtmlWriter writer, Type type)
         {
-            var instanceProperties = type.GetProperties(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+            var instanceProperties = type.GetProperties(AllInstanceBindings);
             if (instanceProperties.Length == 0)
                 return;
 
@@ -272,7 +272,7 @@ namespace AsmExplorer
 
         private void LayoutInstanceFields(HtmlWriter writer, Type type)
         {
-            var instanceFields = type.GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+            var instanceFields = type.GetFields(AllInstanceBindings);
             if (instanceFields.Length == 0)
                 return;
             Array.Sort(instanceFields, (lhs, rhs) => ReflectionHelper.CompareFields(type, lhs, rhs));
