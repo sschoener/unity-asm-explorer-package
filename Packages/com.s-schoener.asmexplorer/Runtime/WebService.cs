@@ -202,7 +202,7 @@ tr:nth-child(even) {
                         var prop = properties[j];
                         if (!prop.CanRead || prop.GetIndexParameters().Length > 0 || prop.Name == "TypeId") continue;
                         if (!first) writer.Write(", ");
-                        else writer.Write(" ( ");
+                        else writer.Write("(");
                         first = false;
                         writer.Write(prop.Name);
                         writer.Write(" = ");
@@ -220,7 +220,7 @@ tr:nth-child(even) {
                     }
 
                     if (!first)
-                        writer.Write(" ) ");
+                        writer.Write(")");
                 }
 
                 if (stacked)
