@@ -8,7 +8,7 @@ namespace AsmExplorer
         public readonly string Name;
         public readonly string FullName;
         private Namespace[] _namespaces;
-        public IEnumerable<Namespace> Namespaces {
+        public IList<Namespace> Namespaces {
             get { return _namespaces; }
         }
 

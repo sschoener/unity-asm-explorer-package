@@ -17,15 +17,20 @@ namespace AsmExplorer
                 writer.AHref("Domain", _completePrefix);
             }
             writer.Inline("h2", "Assembly: " + asm.Name);
-            writer.Inline("h4", "Namespaces");
-            MakeTable(
-                writer,
-                asm.Namespaces.OrderBy(n => n.Name),
-                n => NamespaceLink(writer, n, n.RelativeName)
-            );
+            var namespaces = asm.Namespaces.Where(s => s.Name.Length > 0).ToList();
+            if (namespaces.Count > 0)
+            {
+                writer.Inline("h4", "Namespaces");
+                MakeTable(
+                    writer,
+                    namespaces.OrderBy(n => n.Name),
+                    n => NamespaceLink(writer, n, n.RelativeName)
+                );
+            }
+
             var unnamed = asm.FindNamespace("");
             if (unnamed != null) {
-                writer.Inline("h4", "Types");
+                writer.Inline("h4", "Root namespace");
                 InspectNamespace(writer, unnamed);
             }
         }

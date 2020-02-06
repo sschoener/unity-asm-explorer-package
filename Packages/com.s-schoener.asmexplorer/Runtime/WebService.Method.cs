@@ -177,7 +177,7 @@ namespace AsmExplorer
                                 writer.Write("\n");
                             }
 
-                            using (writer.Tag("span").With("id", "X" + Address(inst).ToString("X16")))
+                            using (writer.Tag("span", "id", "X" + Address(inst).ToString("X16")))
                             {
                                 var str = inst.ToString();
                                 context.LineLength = str.Length;
