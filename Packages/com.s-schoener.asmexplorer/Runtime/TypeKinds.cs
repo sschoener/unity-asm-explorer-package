@@ -27,6 +27,25 @@ namespace AsmExplorer
             return TypeKind.Other;
         }
 
-        public static string KindName(this TypeKind kind) => kind.ToString();
+        public static string KindName(this TypeKind kind)
+        {
+            switch (kind)
+            {
+                case TypeKind.Class:
+                    return "Classes";
+                case TypeKind.Struct:
+                    return "Structs";
+                case TypeKind.Interface:
+                    return "Interfaces";
+                case TypeKind.Enum:
+                    return "Enums";
+                case TypeKind.StaticClass:
+                    return "Static classes";
+                case TypeKind.Other:
+                    return "Others";
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(kind), kind, null);
+            }
+        }
     }
 }

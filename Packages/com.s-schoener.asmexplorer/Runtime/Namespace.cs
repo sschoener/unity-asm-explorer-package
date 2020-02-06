@@ -18,6 +18,8 @@ namespace AsmExplorer
         public string FullName { get; private set; }
         public string Name { get; private set; }
 
+        public string PrettyName => string.IsNullOrEmpty(FullName) ? "<root>" : FullName;
+
         public Assembly Assembly { get; internal set; }
 
         internal Namespace(string fullName, string relativeName, IEnumerable<Type> types) {

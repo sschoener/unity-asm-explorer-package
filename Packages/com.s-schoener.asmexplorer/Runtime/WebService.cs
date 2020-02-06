@@ -71,7 +71,7 @@ namespace AsmExplorer
                     }
 
                     using (writer.Tag("body"))
-                    using (writer.Tag("div", "class", "container-fluid"))
+                    using (writer.ContainerFluid())
                     {
                         if (command == "inspect")
                             ExecuteInspect(writer, ctxt.Request.QueryString);
@@ -79,8 +79,6 @@ namespace AsmExplorer
                             writer.Write($"Invalid command \"{command}\" in {url}");
                     }
 
-                    sw.WriteLine();
-                    WriteJavaScript(sw);
                     sw.WriteLine();
                 }
 
@@ -91,16 +89,6 @@ namespace AsmExplorer
             }
 
             ctxt.Response.OutputStream.Close();
-        }
-
-        static void WriteJavaScript(StreamWriter writer)
-        {
-            const string js = @"
-<!-- jQuery first, then Popper.js, then Bootstrap JS -->
-<script src=""https://code.jquery.com/jquery-3.4.1.slim.min.js"" integrity=""sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n"" crossorigin=""anonymous""></script>
-<script src=""https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"" integrity=""sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"" crossorigin=""anonymous""></script>
-<script src=""https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"" integrity=""sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6"" crossorigin=""anonymous""></script>";
-            writer.WriteLine(js);
         }
 
         static void WriteHeaderContent(StreamWriter writer, string title)
@@ -126,7 +114,13 @@ td, th {
 
 tr:nth-child(even) {
     background-color: #dddddd;
-}";
+}
+
+.container-fluid {
+    margin-top: 15px;
+    margin-bottom: 15px;
+}
+";
             writer.WriteLine(header);
             writer.WriteLine("<style>");
             writer.WriteLine(style);
@@ -162,75 +156,97 @@ tr:nth-child(even) {
             }
         }
 
-        private void MakeTable<T>(HtmlWriter writer, IEnumerable<T> ts, params Action<T>[] inner)
+        void MakeCodeList<T>(HtmlWriter writer, IEnumerable<T> ts, params Action<T>[] inner)
         {
-            using (writer.Tag("div", "class", "container-fluid"))
+            foreach (var t in ts)
             {
-                using (writer.Tag("table"))
+                bool first = true;
+                foreach (var cell in inner)
                 {
-                    foreach (var t in ts)
-                    {
-                        using (writer.Tag("tr"))
-                        {
-                            foreach (var cell in inner)
-                            {
-                                using (writer.Tag("td"))
-                                    cell(t);
-                            }
-                        }
-                    }
+                    if (!first)
+                        writer.Write(" ");
+                    cell(t);
+                    first = false;
                 }
+                writer.WriteLine(";");
             }
+        }
+
+        void MakeCodeListWithoutSemicolon<T>(HtmlWriter writer, IEnumerable<T> ts, params Action<T>[] inner)
+        {
+            foreach (var t in ts)
+            {
+                bool first = true;
+                foreach (var cell in inner)
+                {
+                    if (!first)
+                        writer.Write(" ");
+                    cell(t);
+                    first = false;
+                }
+                writer.Break();
+            }
+        }
+
+        void WriteInlineAttributes(HtmlWriter writer, object[] attributes)
+        {
+            if (attributes == null || attributes.Length == 0)
+                return;
+            WriteAttributes(writer, attributes, false);
+            writer.Break();
         }
 
         private void WriteAttributes(HtmlWriter writer, object[] attributes, bool stacked = true)
         {
-            if (attributes.Length == 0) return;
-            if (!stacked) writer.Write("[");
-            for (int i = 0; i < attributes.Length; i++)
+            using (writer.Tag("code"))
             {
-                if (stacked) writer.Write("[");
-                else if (i > 0) writer.Write(" ,");
-                var type = attributes[i].GetType();
-                TypeLink(writer, type);
-                var properties = type.GetProperties(AllInstanceBindings);
-                if (properties.Length > 0)
+                if (attributes.Length == 0) return;
+                if (!stacked) writer.Write("[");
+                for (int i = 0; i < attributes.Length; i++)
                 {
-                    bool first = true;
-                    for (int j = 0; j < properties.Length; j++)
+                    if (stacked) writer.Write("[");
+                    else if (i > 0) writer.Write(", ");
+                    var type = attributes[i].GetType();
+                    TypeLink(writer, type);
+                    var properties = type.GetProperties(AllInstanceBindings);
+                    if (properties.Length > 0)
                     {
-                        var prop = properties[j];
-                        if (!prop.CanRead || prop.GetIndexParameters().Length > 0 || prop.Name == "TypeId") continue;
-                        if (!first) writer.Write(", ");
-                        else writer.Write("(");
-                        first = false;
-                        writer.Write(prop.Name);
-                        writer.Write(" = ");
-                        var value = prop.GetValue(attributes[i], null);
-                        if (value == null)
-                            writer.Write("null");
-                        else if (value is string)
+                        bool first = true;
+                        for (int j = 0; j < properties.Length; j++)
                         {
-                            writer.Write("\"");
-                            writer.Write((value as string));
-                            writer.Write("\"");
+                            var prop = properties[j];
+                            if (!prop.CanRead || prop.GetIndexParameters().Length > 0 || prop.Name == "TypeId") continue;
+                            if (!first) writer.Write(", ");
+                            else writer.Write("(");
+                            first = false;
+                            writer.Write(prop.Name);
+                            writer.Write(" = ");
+                            var value = prop.GetValue(attributes[i], null);
+                            if (value == null)
+                                writer.Write("null");
+                            else if (value is string)
+                            {
+                                writer.Write("\"");
+                                writer.Write((value as string));
+                                writer.Write("\"");
+                            }
+                            else
+                                writer.Write(value.ToString());
                         }
-                        else
-                            writer.Write(value.ToString());
+
+                        if (!first)
+                            writer.Write(")");
                     }
 
-                    if (!first)
-                        writer.Write(")");
+                    if (stacked)
+                    {
+                        writer.Write("]");
+                        writer.Break();
+                    }
                 }
 
-                if (stacked)
-                {
-                    writer.Write("]");
-                    writer.Break();
-                }
+                if (!stacked) writer.Write("]");
             }
-
-            if (!stacked) writer.Write("]");
         }
 
         #region encode/decode
@@ -383,5 +399,8 @@ tr:nth-child(even) {
                 )
             );
         }
+
+        void DomainLink(HtmlWriter writer) =>
+            writer.AHref(AppDomain.CurrentDomain.FriendlyName, Html.Url(_completePrefix + "inspect"));
     }
 }

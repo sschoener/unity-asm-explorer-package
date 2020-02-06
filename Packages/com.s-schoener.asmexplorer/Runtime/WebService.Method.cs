@@ -19,6 +19,7 @@ namespace AsmExplorer
                     writer.Write(" ");
                 context.HasLineNote = true;
             }
+
             writer.Write("; ");
         }
 
@@ -30,12 +31,14 @@ namespace AsmExplorer
                 writer.Write("Unknown assembly name " + assemblyName);
                 return;
             }
+
             var type = asm.FindType(typeName);
             if (type == null)
             {
                 writer.Write("Unknown type name " + typeName + " in " + asm.FullName);
                 return;
             }
+
             var method = DecodeMethod(type, encodedMethod);
             var ctor = DecodeCtor(type, encodedMethod);
             if (method != null)
@@ -57,13 +60,18 @@ namespace AsmExplorer
         {
             using (writer.Tag("small"))
             {
+                DomainLink(writer);
+                writer.Write(" | ");
                 AssemblyLink(writer, asm);
                 writer.Write(" | ");
                 NamespaceLink(writer, asm.FindNamespace(type.Namespace), type.Namespace ?? "<root>");
                 writer.Write(" | ");
                 TypeLink(writer, type);
+                writer.Break();
+                writer.Break();
             }
-            var attr = method.GetCustomAttributes(true);
+
+            var attr = method.GetCustomAttributes(false);
             if (attr.Length > 0)
             {
                 writer.Break();
@@ -98,6 +106,7 @@ namespace AsmExplorer
         }
 
         private object _disassemblerLock = new object();
+
         private void WriteDissassembly(HtmlWriter writer, MethodBase method)
         {
             if (method.IsAbstract || method.ContainsGenericParameters)
@@ -105,21 +114,26 @@ namespace AsmExplorer
                 writer.Write("Cannot display disassembly for generic or abstract methods.");
                 return;
             }
+
             var context = new MethodContext()
             {
                 DebugEnabled = MonoDebug.IsEnabled
             };
 
             var jitInfo = Mono.GetJitInfo(method);
-            writer.Write("Address: ");
-            writer.Write(jitInfo.CodeStart.ToString("X16"));
-            writer.Break();
-            writer.Write("Code Size in Bytes: ");
-            writer.Write(jitInfo.CodeSize.ToString());
-            writer.Break();
-            writer.Write("Debug mode: ");
-            writer.Write(context.DebugEnabled ? "enabled" : "disabled");
-            writer.Break();
+            using (writer.ContainerFluid())
+            {
+                writer.Write("Address: ");
+                writer.Write(jitInfo.CodeStart.ToString("X16"));
+                writer.Break();
+                writer.Write("Code Size in Bytes: ");
+                writer.Write(jitInfo.CodeSize.ToString());
+                writer.Break();
+                writer.Write("Debug mode: ");
+                writer.Write(context.DebugEnabled ? "enabled" : "disabled");
+                writer.Break();
+            }
+
             if (jitInfo.CodeSize <= 0)
             {
                 return;
@@ -138,15 +152,14 @@ namespace AsmExplorer
                         {
                             context.HasLineNote = false;
 
-                            if (first) {
+                            if (first)
+                            {
                                 context.HasBasePointer =
                                     inst.Mnemonic == ud_mnemonic_code.UD_Ipush &&
                                     inst.Operands[0].Type == ud_type.UD_OP_REG &&
                                     inst.Operands[0].Base == ud_type.UD_R_RBP;
                                 first = false;
                             }
-
-
 
                             // abbreviate excessive nopping
                             if (inst.Mnemonic == ud_mnemonic_code.UD_Inop)
@@ -155,6 +168,7 @@ namespace AsmExplorer
                                 context.LastInstruction = inst;
                                 continue;
                             }
+
                             if (nops > 0)
                             {
                                 if (nops == 1)
@@ -172,6 +186,7 @@ namespace AsmExplorer
                                     writer.Write(nops.ToString());
                                     writer.Write(" bytes)");
                                 }
+
                                 nops = 0;
                                 context.HasLineNote = false;
                                 writer.Write("\n");
@@ -187,18 +202,22 @@ namespace AsmExplorer
                                 {
                                     var op0 = inst.Operands[0];
                                     var op1 = inst.Operands[1];
+
                                     // call targets on x64 are frequently placed in R11, so let's ensure that we catch that.
                                     if (IsR11(op0))
                                         context.R11 = op1;
                                     if (context.DebugEnabled)
                                     {
-                                        if (IsLocalStore(inst) && IsR11(op1) && context.R11 != null && context.R11.Type == ud_type.UD_OP_IMM) {
-                                            if (context.BreakpointTrampolineOffset == 0) {
+                                        if (IsLocalStore(inst) && IsR11(op1) && context.R11 != null && context.R11.Type == ud_type.UD_OP_IMM)
+                                        {
+                                            if (context.BreakpointTrampolineOffset == 0)
+                                            {
                                                 context.BreakpointTrampolineOffset = op0.Value;
                                                 StartNote(writer, ref context);
                                                 writer.Write("write breakpoint trampoline");
                                             }
-                                            else if (context.SinglestepTrampolineOffset == 0) {
+                                            else if (context.SinglestepTrampolineOffset == 0)
+                                            {
                                                 context.SinglestepTrampolineOffset = op0.Value;
                                                 StartNote(writer, ref context);
                                                 writer.Write("write singlestep trampoline");
@@ -219,7 +238,8 @@ namespace AsmExplorer
                                 else if (inst.Mnemonic == ud_mnemonic_code.UD_Iadd)
                                 {
                                     var op1 = inst.Operands[1];
-                                    if (op1.Type == ud_type.UD_OP_IMM) {
+                                    if (op1.Type == ud_type.UD_OP_IMM)
+                                    {
                                         StartNote(writer, ref context);
                                         writer.Write(op1.Value.ToString());
                                     }
@@ -234,6 +254,7 @@ namespace AsmExplorer
                                     WriteJumpInstruction(writer, inst, ref context);
                                 }
                             }
+
                             writer.Write("\n");
 
                             context.LastInstruction = inst;
@@ -246,12 +267,14 @@ namespace AsmExplorer
             bool IsReadSinglestepTrampoline(Instruction inst) => IsLocalLoadOffset(inst, context.SinglestepTrampolineOffset);
             bool IsReadBreakpointTrampoline(Instruction inst) => IsLocalLoadOffset(inst, context.BreakpointTrampolineOffset);
             ud_type StackFrameRegister() => context.HasBasePointer ? ud_type.UD_R_RBP : ud_type.UD_R_RSP;
+
             bool IsLocalInteraction(Instruction inst, int operand)
             {
                 if (inst.Mnemonic != ud_mnemonic_code.UD_Imov) return false;
                 var op = inst.Operands[operand];
                 return op.Type == ud_type.UD_OP_MEM && op.Base == StackFrameRegister();
             }
+
             bool IsLocalStore(Instruction inst) => IsLocalInteraction(inst, 0);
             bool IsLocalLoad(Instruction inst) => IsLocalInteraction(inst, 1);
             bool IsLocalLoadOffset(Instruction inst, long offset) => IsLocalLoad(inst) && inst.Operands[1].Value == offset;
@@ -339,6 +362,7 @@ namespace AsmExplorer
                     callTarget = (ulong)(offset + op0.LvalSQWord);
                 }
             }
+
             return callTarget;
         }
 
@@ -378,6 +402,7 @@ namespace AsmExplorer
                             TypeLink(writer, target.Method.DeclaringType);
                             writer.Write(".");
                         }
+
                         WriteMethodDeclaration(writer, target.Method as MethodInfo);
                     }
                 }
@@ -395,6 +420,7 @@ namespace AsmExplorer
                     writer.Write("check for singlestep");
                     return;
                 }
+
                 writer.Write("unknown target; native, virtual, or unpatched JIT trampoline");
             }
             else
@@ -406,7 +432,8 @@ namespace AsmExplorer
         private void InspectMethod(HtmlWriter writer, Assembly assembly, Type type, MethodInfo method)
         {
             LayoutMethodHeader(writer, assembly, type, method);
-            using (writer.Tag("h2"))
+            using (writer.Tag("code"))
+            using (writer.Tag("h5"))
             {
                 WriteMethodPrefix(writer, method);
                 writer.Write(" ");
@@ -414,19 +441,24 @@ namespace AsmExplorer
                 writer.Write(" ");
                 WriteMethodDeclaration(writer, method);
             }
-            WriteDissassembly(writer, method);
+
+            using (writer.ContainerFluid())
+                WriteDissassembly(writer, method);
         }
 
         private void InspectCtor(HtmlWriter writer, Assembly assembly, Type type, ConstructorInfo ctor)
         {
             LayoutMethodHeader(writer, assembly, type, ctor);
-            using (writer.Tag("h2"))
+            using (writer.Tag("code"))
+            using (writer.Tag("h5"))
             {
                 WriteCtorPrefix(writer, ctor);
                 writer.Write(" ");
                 WriteCtorDeclaration(writer, ctor);
             }
-            WriteDissassembly(writer, ctor);
+
+            using (writer.ContainerFluid())
+                WriteDissassembly(writer, ctor);
         }
 
         private void WriteCtorPrefix(HtmlWriter writer, MethodBase c)
@@ -437,7 +469,6 @@ namespace AsmExplorer
         private void WriteCtorDeclaration(HtmlWriter writer, ConstructorInfo c)
         {
             TypeLink(writer, c.DeclaringType, c.DeclaringType.Name);
-            writer.Write(" ");
             FunctionLink(writer, c, c.Name);
 
             if (c.IsGenericMethodDefinition)
@@ -445,7 +476,7 @@ namespace AsmExplorer
                 WriteGenericArguments(writer, c.GetGenericArguments());
             }
 
-            writer.Write(" (");
+            writer.Write("(");
             var ps = c.GetParameters();
             for (int i = 0; i < ps.Length; i++)
             {
@@ -453,9 +484,11 @@ namespace AsmExplorer
                 {
                     writer.Write(", ");
                 }
+
                 WriteParameter(writer, ps[i]);
             }
-            writer.Write(" )");
+
+            writer.Write(")");
 
             if (c.IsGenericMethodDefinition)
             {
@@ -487,7 +520,7 @@ namespace AsmExplorer
                 WriteGenericArguments(writer, m.GetGenericArguments());
             }
 
-            writer.Write(" ( ");
+            writer.Write("(");
             var ps = m.GetParameters();
             for (int i = 0; i < ps.Length; i++)
             {
@@ -495,9 +528,11 @@ namespace AsmExplorer
                 {
                     writer.Write(", ");
                 }
+
                 WriteParameter(writer, ps[i]);
             }
-            writer.Write(" )");
+
+            writer.Write(")");
 
             if (m.IsGenericMethodDefinition)
             {

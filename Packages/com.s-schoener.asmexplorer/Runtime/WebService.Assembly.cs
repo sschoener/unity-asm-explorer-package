@@ -14,24 +14,40 @@ namespace AsmExplorer
 
         private void InspectAssembly(HtmlWriter writer, Assembly asm) {
             using (writer.Tag("small")) {
-                writer.AHref("Domain", _completePrefix);
+                DomainLink(writer);
             }
-            writer.Inline("h2", "Assembly: " + asm.Name);
-            var namespaces = asm.Namespaces.Where(s => s.Name.Length > 0).ToList();
-            if (namespaces.Count > 0)
-            {
-                writer.Inline("h4", "Namespaces");
-                MakeTable(
-                    writer,
-                    namespaces.OrderBy(n => n.Name),
-                    n => NamespaceLink(writer, n, n.RelativeName)
-                );
-            }
+            writer.Inline("h5", asm.Name);
 
-            var unnamed = asm.FindNamespace("");
-            if (unnamed != null) {
-                writer.Inline("h4", "Root namespace");
-                InspectNamespace(writer, unnamed);
+            using (writer.ContainerFluid())
+            {
+                var namespaces = asm.Namespaces.Where(s => s.Name.Length > 0).ToList();
+                if (namespaces.Count > 0)
+                {
+                    using (writer.ContainerFluid())
+                    using (writer.Tag("code"))
+                    {
+                        writer.Inline("h6", "// namespaces");
+                        MakeCodeList(
+                            writer,
+                            namespaces.OrderBy(n => n.Name),
+                            n =>
+                            {
+                                writer.Write("namespace ");
+                                NamespaceLink(writer, n, n.RelativeName);
+                            });
+                    }
+                }
+
+                var unnamed = asm.FindNamespace("");
+                if (unnamed != null)
+                {
+                    using (writer.ContainerFluid())
+                    using (writer.Tag("code"))
+                    {
+                        writer.Inline("h6", "// Root namespace");
+                        WriteNamespaceMembers(writer, unnamed);
+                    }
+                }
             }
         }
     }

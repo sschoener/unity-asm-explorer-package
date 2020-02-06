@@ -61,9 +61,13 @@ namespace AsmExplorer
             End(tag);
         }
 
-        public void Write(string s) {
-            m_Writer.Write(SecurityElement.Escape(s));
+        public void Write(string s) => m_Writer.Write(SecurityElement.Escape(s));
+
+        public void WriteLine(string s)
+        {
+            Write(s); Break();
         }
+
 
         public TagHandle Tag(string tag) {
             Start(tag);
@@ -94,8 +98,16 @@ namespace AsmExplorer
 
             public void Dispose()
             {
-                m_Writer.End(m_Tag);
+                m_Writer?.End(m_Tag);
             }
+        }
+    }
+
+    static class HtmlWriterExtensions
+    {
+        public static HtmlWriter.TagHandle ContainerFluid(this HtmlWriter writer, params string[] attributes)
+        {
+            return writer.Tag("div class=\"container-fluid\"", attributes);
         }
     }
 }
