@@ -9,6 +9,13 @@ namespace AsmExplorer
 
         static ExplorerInstance() {
             RestartWebservice();
+            AssemblyReloadEvents.beforeAssemblyReload += BeforeAssemblyReload;
+        }
+
+        static void BeforeAssemblyReload()
+        {
+            StopWebservice();
+            AssemblyReloadEvents.beforeAssemblyReload -= BeforeAssemblyReload;
         }
 
         public static bool WebServiceRunning => s_WebService != null;
