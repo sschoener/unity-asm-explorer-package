@@ -4,7 +4,7 @@ namespace AsmExplorer
 {
     public partial class WebService {
         private void InspectAssembly(HtmlWriter writer, string assemblyName) {
-            var asm = _explorer.FindAssembly(assemblyName);
+            var asm = m_Explorer.FindAssembly(assemblyName);
             if (asm == null) {
                 writer.Write("Unknown assembly name " + assemblyName);
                 return;

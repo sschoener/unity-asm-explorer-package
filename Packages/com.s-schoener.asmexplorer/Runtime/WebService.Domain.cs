@@ -10,7 +10,7 @@ namespace AsmExplorer
         void InspectDomain(HtmlWriter writer)
         {
             writer.Inline("h5", AppDomain.CurrentDomain.FriendlyName);
-            var assemblies = _explorer.Assemblies.ToArray();
+            var assemblies = m_Explorer.Assemblies.ToArray();
 
             Array.Sort(assemblies, (lhs, rhs) => lhs.FullName.CompareTo(rhs.FullName));
             if (assemblies.Length > 0)

@@ -7,7 +7,7 @@ namespace AsmExplorer
     {
         private void InspectNamespace(HtmlWriter writer, string assemblyName, string namespaceName)
         {
-            var asm = _explorer.FindAssembly(assemblyName);
+            var asm = m_Explorer.FindAssembly(assemblyName);
             if (asm == null)
             {
                 writer.Write("Unknown assembly name " + assemblyName);

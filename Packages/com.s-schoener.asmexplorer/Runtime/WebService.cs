@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Reflection;
 using System.Text;
@@ -13,32 +12,26 @@ namespace AsmExplorer
 {
     public partial class WebService
     {
-        private const BindingFlags AllInstanceBindings = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
-        private const BindingFlags AllStaticBindings = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
-        private const BindingFlags AllBindings = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
-        private readonly WebServer _webServer;
-        private readonly string _completePrefix;
-        private readonly Explorer _explorer;
+        const BindingFlags k_AllInstanceBindings = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+        const BindingFlags k_AllStaticBindings = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
+        const BindingFlags k_AllBindings = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
+        readonly WebServer m_WebServer;
+        readonly string m_CompletePrefix;
+        readonly Explorer m_Explorer;
 
         public WebService(Explorer explorer, string prefix, int port = 8080)
         {
-            _explorer = explorer;
-            _completePrefix = "http://localhost:" + port + "/" + prefix + "/";
-            _webServer = new WebServer(HandleRequest, _completePrefix,
+            m_Explorer = explorer;
+            m_CompletePrefix = "http://localhost:" + port + "/" + prefix + "/";
+            m_WebServer = new WebServer(HandleRequest, m_CompletePrefix,
                 "http://127.0.0.1:" + port + "/" + prefix + "/");
         }
 
-        public void Start()
-        {
-            _webServer.Run();
-        }
+        public void Start() => m_WebServer.Run();
 
-        public void Stop()
-        {
-            _webServer.Stop();
-        }
+        public void Stop() => m_WebServer.Stop();
 
-        private void HandleRequest(HttpListenerContext ctxt)
+        void HandleRequest(HttpListenerContext ctxt)
         {
             // decode command
             string url = ctxt.Request.RawUrl;
@@ -73,10 +66,24 @@ namespace AsmExplorer
                     using (writer.Tag("body"))
                     using (writer.ContainerFluid())
                     {
-                        if (command == "inspect")
-                            ExecuteInspect(writer, ctxt.Request.QueryString);
-                        else
-                            writer.Write($"Invalid command \"{command}\" in {url}");
+                        switch (command)
+                        {
+                            case "inspect":
+                            {
+                                ExecuteInspect(writer, ctxt.Request.QueryString);
+                                break;
+                            }
+                            case "lookup":
+                            {
+                                ExecuteLookup(writer, ctxt.Request.QueryString);
+                                break;
+                            }
+                            default:
+                            {
+                                writer.Write($"Invalid command \"{command}\" in {url}");
+                                break;
+                            }
+                        }
                     }
 
                     sw.WriteLine();
@@ -128,7 +135,7 @@ tr:nth-child(even) {
             writer.WriteLine($"<title>{title}</title>");
         }
 
-        private void ExecuteInspect(HtmlWriter writer, NameValueCollection args)
+        void ExecuteInspect(HtmlWriter writer, NameValueCollection args)
         {
             if (args["assembly"] != null)
             {
@@ -156,7 +163,7 @@ tr:nth-child(even) {
             }
         }
 
-        void MakeCodeList<T>(HtmlWriter writer, IEnumerable<T> ts, params Action<T>[] inner)
+        static void MakeCodeList<T>(HtmlWriter writer, IEnumerable<T> ts, params Action<T>[] inner)
         {
             foreach (var t in ts)
             {
@@ -172,7 +179,7 @@ tr:nth-child(even) {
             }
         }
 
-        void MakeCodeListWithoutSemicolon<T>(HtmlWriter writer, IEnumerable<T> ts, params Action<T>[] inner)
+        static void MakeCodeListWithoutSemicolon<T>(HtmlWriter writer, IEnumerable<T> ts, params Action<T>[] inner)
         {
             foreach (var t in ts)
             {
@@ -196,7 +203,7 @@ tr:nth-child(even) {
             writer.Break();
         }
 
-        private void WriteAttributes(HtmlWriter writer, object[] attributes, bool stacked = true)
+        void WriteAttributes(HtmlWriter writer, object[] attributes, bool stacked = true)
         {
             using (writer.Tag("code"))
             {
@@ -208,7 +215,7 @@ tr:nth-child(even) {
                     else if (i > 0) writer.Write(", ");
                     var type = attributes[i].GetType();
                     TypeLink(writer, type);
-                    var properties = type.GetProperties(AllInstanceBindings);
+                    var properties = type.GetProperties(k_AllInstanceBindings);
                     if (properties.Length > 0)
                     {
                         bool first = true;
@@ -249,158 +256,73 @@ tr:nth-child(even) {
             }
         }
 
-        #region encode/decode
+        void FunctionLink(HtmlWriter writer, MethodInfo method) => FunctionLink(writer, method, method.DeclaringType.Name + "." + method.Name);
 
-        const string k_MethodEncodingGenericArgSeparator = ";;;with;;;";
-
-        private string EncodeMethod(MethodInfo method)
-        {
-            if (method.IsGenericMethod && !method.IsGenericMethodDefinition)
-            {
-                var genericDefinition = method.GetGenericMethodDefinition();
-                string methodId = genericDefinition.ToString();
-                var arguments = method.GetGenericArguments();
-                methodId += k_MethodEncodingGenericArgSeparator + string.Join(";", arguments.Select(EncodeType));
-                return methodId;
-            }
-            else
-            {
-                return method.ToString();
-            }
-        }
-
-        private MethodInfo DecodeMethod(Type type, string encodedMethod)
-        {
-            int separator = encodedMethod.IndexOf(k_MethodEncodingGenericArgSeparator);
-            Type[] genericArguments;
-            string lookUpKey;
-            if (separator < 0)
-            {
-                lookUpKey = encodedMethod;
-                genericArguments = null;
-            }
-            else
-            {
-                lookUpKey = encodedMethod.Substring(0, separator);
-                var arguments = encodedMethod.Substring(separator + k_MethodEncodingGenericArgSeparator.Length).Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
-                genericArguments = arguments.Select(DecodeType).ToArray();
-            }
-
-            var methods = type.GetMethods(AllBindings);
-            for (int i = 0; i < methods.Length; i++)
-            {
-                if (methods[i].ToString() == lookUpKey)
-                {
-                    if (genericArguments != null)
-                        return methods[i].MakeGenericMethod(genericArguments);
-                    return methods[i];
-                }
-            }
-
-            return null;
-        }
-
-        private string EncodeCtor(ConstructorInfo ctor) => ctor.ToString();
-
-        private ConstructorInfo DecodeCtor(Type type, string ctorName)
-        {
-            var ctors = type.GetConstructors(AllBindings);
-            for (int i = 0; i < ctors.Length; i++)
-            {
-                if (ctors[i].ToString() == ctorName)
-                    return ctors[i];
-            }
-
-            return null;
-        }
-
-        private string EncodeType(Type type) => type.AssemblyQualifiedName;
-        private Type DecodeType(string encodedType) => Type.GetType(encodedType, false, false);
-
-        #endregion
-
-        private void FunctionLink(HtmlWriter writer, MethodInfo method)
-        {
-            FunctionLink(writer, method, method.DeclaringType.Name + "." + method.Name);
-        }
-
-        private void FunctionLink(HtmlWriter writer, MethodInfo method, string txt)
+        void FunctionLink(HtmlWriter writer, MethodInfo method, string txt)
         {
             writer.AHref(txt,
                 Html.Url(
-                    _completePrefix + "inspect",
+                    m_CompletePrefix + "inspect",
                     "assembly", method.DeclaringType.Assembly.FullName,
                     "type", method.DeclaringType.FullName,
-                    "method", EncodeMethod(method)
+                    "method", Serialization.EncodeMethod(method)
                 )
             );
         }
 
-        private void FunctionLink(HtmlWriter writer, ConstructorInfo method)
-        {
-            FunctionLink(writer, method, method.DeclaringType.Name + "." + method.Name);
-        }
+        void FunctionLink(HtmlWriter writer, ConstructorInfo method) => FunctionLink(writer, method, method.DeclaringType.Name + "." + method.Name);
 
-        private void FunctionLink(HtmlWriter writer, ConstructorInfo method, string txt)
+        void FunctionLink(HtmlWriter writer, ConstructorInfo method, string txt)
         {
             writer.AHref(txt,
                 Html.Url(
-                    _completePrefix + "inspect",
+                    m_CompletePrefix + "inspect",
                     "assembly", method.DeclaringType.Assembly.FullName,
                     "type", method.DeclaringType.FullName,
-                    "method", EncodeCtor(method)
+                    "method", Serialization.EncodeCtor(method)
                 )
             );
         }
 
-        private void TypeLink(HtmlWriter writer, Type type)
-        {
-            TypeLink(writer, type, type.PrettyName());
-        }
+        void TypeLink(HtmlWriter writer, Type type) => TypeLink(writer, type, type.PrettyName());
 
-        private void TypeLink(HtmlWriter writer, Type type, string txt)
+        void TypeLink(HtmlWriter writer, Type type, string txt)
         {
             writer.AHref(txt,
                 Html.Url(
-                    _completePrefix + "inspect",
+                    m_CompletePrefix + "inspect",
                     "assembly", type.Assembly.FullName,
                     "type", type.FullName
                 )
             );
         }
 
-        private void NamespaceLink(HtmlWriter writer, Namespace ns)
-        {
-            NamespaceLink(writer, ns, ns.FullName);
-        }
+        void NamespaceLink(HtmlWriter writer, Namespace ns) => NamespaceLink(writer, ns, ns.FullName);
 
-        private void NamespaceLink(HtmlWriter writer, Namespace ns, string txt)
+        void NamespaceLink(HtmlWriter writer, Namespace ns, string txt)
         {
             writer.AHref(txt,
                 Html.Url(
-                    _completePrefix + "inspect",
+                    m_CompletePrefix + "inspect",
                     "assembly", ns.Assembly.FullName,
                     "namespace", ns.FullName
                 )
             );
         }
 
-        private void AssemblyLink(HtmlWriter writer, Assembly assembly)
-        {
-            AssemblyLink(writer, assembly, assembly.Name);
-        }
+        void AssemblyLink(HtmlWriter writer, Assembly assembly) => AssemblyLink(writer, assembly, assembly.Name);
 
-        private void AssemblyLink(HtmlWriter writer, Assembly assembly, string txt)
+        void AssemblyLink(HtmlWriter writer, Assembly assembly, string txt)
         {
             writer.AHref(txt,
                 Html.Url(
-                    _completePrefix + "inspect",
+                    m_CompletePrefix + "inspect",
                     "assembly", assembly.FullName
                 )
             );
         }
 
         void DomainLink(HtmlWriter writer) =>
-            writer.AHref(AppDomain.CurrentDomain.FriendlyName, Html.Url(_completePrefix + "inspect"));
+            writer.AHref(AppDomain.CurrentDomain.FriendlyName, Html.Url(m_CompletePrefix + "inspect"));
     }
 }

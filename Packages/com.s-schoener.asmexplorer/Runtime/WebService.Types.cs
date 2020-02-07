@@ -10,7 +10,7 @@ namespace AsmExplorer
     {
         private void InspectType(HtmlWriter writer, string assemblyName, string typeName)
         {
-            var asm = _explorer.FindAssembly(assemblyName);
+            var asm = m_Explorer.FindAssembly(assemblyName);
             if (asm == null)
             {
                 writer.Write("Unknown assembly name " + assemblyName);
@@ -119,7 +119,7 @@ namespace AsmExplorer
 
         private void InspectClass(HtmlWriter writer, Type type)
         {
-            var instanceCtors = type.GetConstructors(AllInstanceBindings);
+            var instanceCtors = type.GetConstructors(k_AllInstanceBindings);
             Array.Sort(instanceCtors, (lhs, rhs) => ReflectionHelper.CompareConstructors(type, lhs, rhs));
             if (instanceCtors.Length > 0)
             {
@@ -130,7 +130,7 @@ namespace AsmExplorer
                 }
             }
 
-            var staticCtor = type.GetConstructors(AllStaticBindings);
+            var staticCtor = type.GetConstructors(k_AllStaticBindings);
             if (staticCtor.Length > 0)
             {
                 Array.Sort(staticCtor, (lhs, rhs) => ReflectionHelper.CompareConstructors(type, lhs, rhs));
@@ -143,7 +143,7 @@ namespace AsmExplorer
 
             LayoutInstanceFields(writer, type);
 
-            var staticFields = type.GetFields(AllStaticBindings);
+            var staticFields = type.GetFields(k_AllStaticBindings);
             if (staticFields.Length > 0)
             {
                 Array.Sort(staticFields, (lhs, rhs) => ReflectionHelper.CompareFields(type, lhs, rhs));
@@ -156,7 +156,7 @@ namespace AsmExplorer
 
             LayoutInstanceProperties(writer, type);
 
-            var staticProperties = type.GetProperties(AllStaticBindings);
+            var staticProperties = type.GetProperties(k_AllStaticBindings);
             if (staticProperties.Length > 0)
             {
                 Array.Sort(staticProperties, (lhs, rhs) => ReflectionHelper.CompareProperties(type, lhs, rhs));
@@ -169,7 +169,7 @@ namespace AsmExplorer
 
             LayoutInstanceMethods(writer, type);
 
-            var staticMethods = type.GetMethods(AllStaticBindings);
+            var staticMethods = type.GetMethods(k_AllStaticBindings);
             if (staticMethods.Length > 0)
             {
                 Array.Sort(staticMethods, (lhs, rhs) => ReflectionHelper.CompareMethods(type, lhs, rhs));
@@ -256,7 +256,7 @@ namespace AsmExplorer
 
         private void LayoutInstanceMethods(HtmlWriter writer, Type type)
         {
-            var instanceMethods = type.GetMethods(AllInstanceBindings);
+            var instanceMethods = type.GetMethods(k_AllInstanceBindings);
             if (instanceMethods.Length == 0)
                 return;
 
@@ -292,7 +292,7 @@ namespace AsmExplorer
 
         private void LayoutInstanceProperties(HtmlWriter writer, Type type)
         {
-            var instanceProperties = type.GetProperties(AllInstanceBindings);
+            var instanceProperties = type.GetProperties(k_AllInstanceBindings);
             if (instanceProperties.Length == 0)
                 return;
 
@@ -328,7 +328,7 @@ namespace AsmExplorer
 
         private void LayoutInstanceFields(HtmlWriter writer, Type type)
         {
-            var instanceFields = type.GetFields(AllInstanceBindings);
+            var instanceFields = type.GetFields(k_AllInstanceBindings);
             if (instanceFields.Length == 0)
                 return;
             Array.Sort(instanceFields, (lhs, rhs) => ReflectionHelper.CompareFields(type, lhs, rhs));

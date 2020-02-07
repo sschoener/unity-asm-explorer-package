@@ -25,7 +25,7 @@ namespace AsmExplorer
 
         private void InspectMethod(HtmlWriter writer, string assemblyName, string typeName, string encodedMethod)
         {
-            var asm = _explorer.FindAssembly(assemblyName);
+            var asm = m_Explorer.FindAssembly(assemblyName);
             if (asm == null)
             {
                 writer.Write("Unknown assembly name " + assemblyName);
@@ -39,8 +39,8 @@ namespace AsmExplorer
                 return;
             }
 
-            var method = DecodeMethod(type, encodedMethod);
-            var ctor = DecodeCtor(type, encodedMethod);
+            var method = Serialization.DecodeMethod(type, encodedMethod);
+            var ctor = Serialization.DecodeCtor(type, encodedMethod);
             if (method != null)
             {
                 InspectMethod(writer, asm, type, method);
