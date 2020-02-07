@@ -5,6 +5,8 @@ namespace AsmExplorer
     [InitializeOnLoadAttribute]
     public static class ExplorerInstance
     {
+        public const int Port = 8080;
+        public static string URL => "http://localhost:" + Port + "/explorer/";
         static WebService s_WebService;
 
         static ExplorerInstance() {
@@ -28,7 +30,7 @@ namespace AsmExplorer
         public static void RestartWebservice()
         {
             s_WebService?.Stop();
-            s_WebService = new WebService(new Explorer(), "explorer");
+            s_WebService = new WebService(new Explorer(), "explorer", Port);
             s_WebService.Start();
         }
         

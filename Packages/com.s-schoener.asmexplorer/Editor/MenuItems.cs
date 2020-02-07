@@ -8,7 +8,7 @@ namespace AsmExplorer
         public static void AsmExplorer()
         {
             ExplorerInstance.EnsureWebservice();
-            Application.OpenURL("http://localhost:8080/explorer/");
+            Application.OpenURL(ExplorerInstance.URL);
         }
     }
 }
