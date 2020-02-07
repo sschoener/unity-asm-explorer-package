@@ -466,14 +466,24 @@ namespace AsmExplorer
             writer.Write(c.GetAccessModifier().Pretty());
         }
 
-        private void WriteCtorDeclaration(HtmlWriter writer, ConstructorInfo c)
+        private void WriteCtorDeclaration(HtmlWriter writer, ConstructorInfo c, bool noLink=false)
         {
-            TypeLink(writer, c.DeclaringType, c.DeclaringType.Name);
-            MethodLink(writer, c, c.Name);
+            if (noLink)
+            {
+                writer.Write(c.DeclaringType.Name);
+                writer.Write(".");
+                writer.Write(c.Name);
+            }
+            else
+            {
+                TypeLink(writer, c.DeclaringType, c.DeclaringType.Name);
+                writer.Write(".");
+                MethodLink(writer, c, c.Name);
+            }
 
             if (c.IsGenericMethodDefinition)
             {
-                WriteGenericArguments(writer, c.GetGenericArguments());
+                WriteGenericArguments(writer, c.GetGenericArguments(), TypeExt.NameMode.Short, noLink);
             }
 
             writer.Write("(");
@@ -485,7 +495,7 @@ namespace AsmExplorer
                     writer.Write(", ");
                 }
 
-                WriteParameter(writer, ps[i]);
+                WriteParameter(writer, ps[i], noLink);
             }
 
             writer.Write(")");
@@ -494,7 +504,7 @@ namespace AsmExplorer
             {
                 var args = c.GetGenericArguments();
                 for (int i = 0; i < args.Length; i++)
-                    WriteGenericConstraints(writer, args[i]);
+                    WriteGenericConstraints(writer, args[i], noLink);
             }
         }
 
@@ -511,13 +521,16 @@ namespace AsmExplorer
             }
         }
 
-        private void WriteMethodDeclaration(HtmlWriter writer, MethodInfo m)
+        private void WriteMethodDeclaration(HtmlWriter writer, MethodInfo m, bool noLink = false)
         {
-            MethodLink(writer, m, m.Name);
+            if (noLink)
+                writer.Write(m.Name);
+            else
+                MethodLink(writer, m, m.Name);
 
             if (m.IsGenericMethodDefinition)
             {
-                WriteGenericArguments(writer, m.GetGenericArguments());
+                WriteGenericArguments(writer, m.GetGenericArguments(), TypeExt.NameMode.Short, noLink);
             }
 
             writer.Write("(");
@@ -529,7 +542,7 @@ namespace AsmExplorer
                     writer.Write(", ");
                 }
 
-                WriteParameter(writer, ps[i]);
+                WriteParameter(writer, ps[i], noLink);
             }
 
             writer.Write(")");
@@ -538,7 +551,7 @@ namespace AsmExplorer
             {
                 var args = m.GetGenericArguments();
                 for (int i = 0; i < args.Length; i++)
-                    WriteGenericConstraints(writer, args[i]);
+                    WriteGenericConstraints(writer, args[i], noLink);
             }
         }
 

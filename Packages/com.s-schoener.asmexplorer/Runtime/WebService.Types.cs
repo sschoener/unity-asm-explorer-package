@@ -395,7 +395,7 @@ namespace AsmExplorer
             );
         }
 
-        private void WriteGenericArguments(HtmlWriter writer, Type[] types, TypeExt.NameMode mode = TypeExt.NameMode.Short)
+        private void WriteGenericArguments(HtmlWriter writer, Type[] types, TypeExt.NameMode mode = TypeExt.NameMode.Short, bool noLink=false)
         {
             writer.Write("<");
             for (int i = 0; i < types.Length; i++)
@@ -413,14 +413,18 @@ namespace AsmExplorer
                 }
                 else
                 {
-                    TypeLink(writer, types[i], types[i].PrettyName(mode));
+                    var txt = types[i].PrettyName(mode);
+                    if (noLink)
+                        writer.Write(txt);
+                    else
+                        TypeLink(writer, types[i], txt);
                 }
             }
 
             writer.Write(">");
         }
 
-        private void WriteGenericConstraints(HtmlWriter writer, Type generic)
+        private void WriteGenericConstraints(HtmlWriter writer, Type generic, bool noLink=false)
         {
             var constraints = generic.GetGenericParameterConstraints();
             if (constraints.Length == 0)
@@ -432,7 +436,7 @@ namespace AsmExplorer
             for (int i = 0; i < constraints.Length; i++)
             {
                 if (i > 0) writer.Write(", ");
-                WriteTypeName(writer, constraints[i]);
+                WriteTypeName(writer, constraints[i], noLink);
             }
 
             bool hasPrevious = constraints.Length > 0;
@@ -470,7 +474,7 @@ namespace AsmExplorer
             );
         }
 
-        private void WriteParameter(HtmlWriter writer, ParameterInfo p)
+        private void WriteParameter(HtmlWriter writer, ParameterInfo p, bool noLink=false)
         {
             var pt = p.ParameterType;
             if (p.IsIn)
@@ -489,7 +493,7 @@ namespace AsmExplorer
                 pt = p.ParameterType.GetElementType();
             }
 
-            WriteTypeName(writer, pt);
+            WriteTypeName(writer, pt, noLink);
             writer.Write(" ");
             writer.Write(p.Name);
         }
@@ -520,7 +524,7 @@ namespace AsmExplorer
             { typeof(object), "object" }
         };
 
-        private void WriteTypeName(HtmlWriter writer, Type type, bool full = true)
+        private void WriteTypeName(HtmlWriter writer, Type type, bool noLink=false)
         {
             if (type.IsGenericParameter)
             {
@@ -528,22 +532,27 @@ namespace AsmExplorer
                 return;
             }
 
-            string name;
-            if (_specialNames.TryGetValue(type, out name))
+            if (_specialNames.TryGetValue(type, out var name))
             {
-                TypeLink(writer, type, name);
-                return;
+                if (noLink)
+                    writer.Write(name);
+                else
+                    TypeLink(writer, type, name);
             }
             else if (type.IsGenericType)
             {
-                TypeLink(writer, type, full ? type.Namespace + "." + type.Name : type.Name);
+                var txt = type.Namespace + "." + type.Name;
+                if (noLink)
+                    writer.Write(txt);
+                else
+                    TypeLink(writer, type, txt);
                 writer.Write("<");
                 var arguments = type.GetGenericArguments();
                 for (int i = 0; i < arguments.Length; i++)
                 {
                     if (i > 0)
                         writer.Write(", ");
-                    WriteTypeName(writer, arguments[i], full);
+                    WriteTypeName(writer, arguments[i], noLink);
                 }
 
                 writer.Write(">");
@@ -551,21 +560,15 @@ namespace AsmExplorer
             else if (type.IsPointer)
             {
                 writer.Write("*");
-                WriteTypeName(writer, type.GetElementType(), full);
+                WriteTypeName(writer, type.GetElementType(), noLink);
             }
             else
             {
-                if (full)
-                {
-                    name = type.FullName ?? type.Name;
-                }
+                name = type.FullName ?? type.Name;
+                if (noLink)
+                    writer.Write(name);
                 else
-                {
-                    name = type.Name ?? type.FullName;
-                }
-
-                TypeLink(writer, type, name);
-                return;
+                    TypeLink(writer, type, name);
             }
         }
 
