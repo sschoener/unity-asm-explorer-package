@@ -469,7 +469,7 @@ namespace AsmExplorer
         private void WriteCtorDeclaration(HtmlWriter writer, ConstructorInfo c)
         {
             TypeLink(writer, c.DeclaringType, c.DeclaringType.Name);
-            FunctionLink(writer, c, c.Name);
+            MethodLink(writer, c, c.Name);
 
             if (c.IsGenericMethodDefinition)
             {
@@ -513,7 +513,7 @@ namespace AsmExplorer
 
         private void WriteMethodDeclaration(HtmlWriter writer, MethodInfo m)
         {
-            FunctionLink(writer, m, m.Name);
+            MethodLink(writer, m, m.Name);
 
             if (m.IsGenericMethodDefinition)
             {

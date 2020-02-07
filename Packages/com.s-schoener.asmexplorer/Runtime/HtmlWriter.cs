@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Security;
 using System.Xml;
+using UnityEngine;
 
 namespace AsmExplorer
 {
@@ -21,6 +22,7 @@ namespace AsmExplorer
 
         void Start(string t, params string[] attributes)
         {
+            Debug.Assert(attributes.Length % 2 == 0);
             m_Writer.Write('<');
             m_Writer.Write(t);
             for (int i = 0; i < attributes.Length; i += 2) {
@@ -49,6 +51,9 @@ namespace AsmExplorer
             Escaped(text);
             End(tag);
         }
+
+        public void InlineTag(string tag, params string[] attributes) =>
+            Start(tag, attributes);
 
         public void Break() {
             m_Writer.Write("<br>");
@@ -105,9 +110,9 @@ namespace AsmExplorer
 
     static class HtmlWriterExtensions
     {
-        public static HtmlWriter.TagHandle ContainerFluid(this HtmlWriter writer, params string[] attributes)
+        public static HtmlWriter.TagHandle ContainerFluid(this HtmlWriter writer)
         {
-            return writer.Tag("div class=\"container-fluid\"", attributes);
+            return writer.Tag("div", "class", "container-fluid");
         }
     }
 }

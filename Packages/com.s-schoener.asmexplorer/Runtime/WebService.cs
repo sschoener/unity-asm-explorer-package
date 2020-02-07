@@ -27,6 +27,8 @@ namespace AsmExplorer
                 "http://127.0.0.1:" + port + "/" + prefix + "/");
         }
 
+        string CommandUrl(string command) => m_CompletePrefix + command;
+
         public void Start() => m_WebServer.Run();
 
         public void Stop() => m_WebServer.Stop();
@@ -75,7 +77,7 @@ namespace AsmExplorer
                             }
                             case "lookup":
                             {
-                                ExecuteLookup(writer, ctxt.Request.QueryString);
+                                ExecuteLookup(writer, ctxt.Request);
                                 break;
                             }
                             default:
@@ -256,9 +258,9 @@ tr:nth-child(even) {
             }
         }
 
-        void FunctionLink(HtmlWriter writer, MethodInfo method) => FunctionLink(writer, method, method.DeclaringType.Name + "." + method.Name);
+        void MethodLink(HtmlWriter writer, MethodInfo method) => MethodLink(writer, method, method.DeclaringType.Name + "." + method.Name);
 
-        void FunctionLink(HtmlWriter writer, MethodInfo method, string txt)
+        void MethodLink(HtmlWriter writer, MethodInfo method, string txt)
         {
             writer.AHref(txt,
                 Html.Url(
@@ -270,9 +272,9 @@ tr:nth-child(even) {
             );
         }
 
-        void FunctionLink(HtmlWriter writer, ConstructorInfo method) => FunctionLink(writer, method, method.DeclaringType.Name + "." + method.Name);
+        void MethodLink(HtmlWriter writer, ConstructorInfo method) => MethodLink(writer, method, method.DeclaringType.Name + "." + method.Name);
 
-        void FunctionLink(HtmlWriter writer, ConstructorInfo method, string txt)
+        void MethodLink(HtmlWriter writer, ConstructorInfo method, string txt)
         {
             writer.AHref(txt,
                 Html.Url(

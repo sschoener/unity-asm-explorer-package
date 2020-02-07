@@ -377,7 +377,7 @@ namespace AsmExplorer
                         var getter = p.GetGetMethod(nonPublic: true);
                         WriteMethodPrefix(writer, getter);
                         writer.Write(" ");
-                        FunctionLink(writer, getter, "get");
+                        MethodLink(writer, getter, "get");
                         writer.Write("; ");
                     }
 
@@ -386,7 +386,7 @@ namespace AsmExplorer
                         var setter = p.GetSetMethod(nonPublic: true);
                         WriteMethodPrefix(writer, setter);
                         writer.Write(" ");
-                        FunctionLink(writer, setter, "set");
+                        MethodLink(writer, setter, "set");
                         writer.Write(";");
                     }
 
