@@ -22,7 +22,10 @@ namespace AsmExplorer
             for (int i = 0; i < assemblies.Length; i++) {
                 RegisterAssembly(assemblies[i]);
             }
-            AppDomain.CurrentDomain.AssemblyLoad += (o, args) => RegisterAssembly(args.LoadedAssembly);
+            AppDomain.CurrentDomain.AssemblyLoad += (o, args) =>
+            {
+                RegisterAssembly(args.LoadedAssembly);
+            };
         }
 
         private void RegisterAssembly(System.Reflection.Assembly asm) {
@@ -68,7 +71,7 @@ namespace AsmExplorer
             foreach (var ns in namespaces.Values) {
                 ns.Assembly = assembly;
             }
-            _assemblies.Add(assembly.FullName, assembly);
+            _assemblies[assembly.FullName] = assembly;
         }
 
         public Assembly FindAssembly(string name) {
