@@ -27,6 +27,26 @@ namespace AsmExplorer
                 "http://127.0.0.1:" + port + "/" + prefix + "/");
         }
 
+        public static string MakeCommandURL(string baseUrl, WebServiceCommand command)
+        {
+            if (!baseUrl.EndsWith("/"))
+                baseUrl += '/';
+            return baseUrl + CommandName(command);
+        }
+
+        static string CommandName(WebServiceCommand command)
+        {
+            switch (command)
+            {
+                case WebServiceCommand.Inspect:
+                    return "inspect";
+                case WebServiceCommand.Lookup:
+                    return "lookup";
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(command), command, null);
+            }
+        }
+
         string CommandUrl(string command) => m_CompletePrefix + command;
 
         public void Start() => m_WebServer.Run();
