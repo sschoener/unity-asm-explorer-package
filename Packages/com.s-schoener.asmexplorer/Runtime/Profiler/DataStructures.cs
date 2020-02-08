@@ -1,16 +1,31 @@
-﻿namespace AsmExplorer.Profiler
+﻿using System;
+
+namespace AsmExplorer.Profiler
 {
     unsafe struct ProfilerDataHeader
     {
         public int Version;
+
         public uint NumSamples;
         public long SamplesOffset => sizeof(ProfilerDataHeader);
+
         public uint NumFunctions;
         public long FunctionsOffset => SamplesOffset + NumSamples * sizeof(SampleData);
+
         public uint NumModules;
         public long ModulesOffset => FunctionsOffset + NumFunctions * sizeof(FunctionData);
+
         public uint NumStackTraces;
-        public long StackTracesOffset => ModulesOffset + NumStackTraces + sizeof(StackFrameData);
+        public long StackTracesOffset => ModulesOffset + NumModules + sizeof(ModuleData);
+
+        public uint NumThreads;
+        public long ThreadsOffset => StackTracesOffset + NumStackTraces * sizeof(StackFrameData);
+    }
+
+    unsafe struct ThreadData
+    {
+        public const int MaxThreadNameLength = 64;
+        public fixed char ThreadName[MaxThreadNameLength];
     }
 
     struct SampleData
