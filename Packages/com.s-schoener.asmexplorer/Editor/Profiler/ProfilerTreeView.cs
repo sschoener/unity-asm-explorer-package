@@ -82,11 +82,17 @@ namespace AsmExplorer {
                             m_Module[idx] = "???";
                         else
                         {
-                            int module = m_Trace.Functions[funcIndex].Module;
-                            if (module < 0)
+                            int moduleIndex = m_Trace.Functions[funcIndex].Module;
+                            if (moduleIndex < 0)
                                 m_Module[idx] = "???";
                             else
-                                m_Module[idx] = Path.GetFileName(m_Trace.Modules[module].FilePath.ToString());
+                            {
+                                var module = m_Trace.Modules[moduleIndex];
+                                string name = Path.GetFileName(module.FilePath.ToString());
+                                if (module.IsMono)
+                                    name += " (managed)";
+                                m_Module[idx] = name;
+                            }
                         }
                     }
                     EditorGUI.LabelField(rect, m_Module[idx]);

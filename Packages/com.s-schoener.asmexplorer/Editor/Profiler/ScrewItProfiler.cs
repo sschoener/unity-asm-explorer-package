@@ -174,18 +174,15 @@ namespace AsmExplorer.Profiler {
             m_ThreadNames.Clear();
             for (int i = 0; i < m_Trace.Threads.Length; i++)
             {
-                unsafe
-                {
-                    var thread = m_Trace.Threads[i];
-                    string threadName;
-                    if (thread.ThreadName.LengthInBytes == 0)
-                        threadName = "Thread " + i + " (unnamed)";
-                    else
-                        threadName = thread.ThreadName.ToString();
-                    m_ThreadNames.Add(threadName);
-                }
+                var thread = m_Trace.Threads[i];
+                string threadName;
+                if (thread.ThreadName.LengthInBytes == 0)
+                    threadName = "Thread " + i + " (unnamed)";
+                else
+                    threadName = thread.ThreadName.ToString();
+                m_ThreadNames.Add(threadName);
             }
-            m_ThreadSelection.index = 0;
+            m_ThreadSelection.SetValueWithoutNotify(m_ThreadNames[0]);
 
             UpdateHeatMap(0);
             m_ProfilerTree.SetData(m_Trace, m_HeatMap);

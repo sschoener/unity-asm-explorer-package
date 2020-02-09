@@ -133,7 +133,6 @@ namespace AsmExplorer.Profiler
 
         public static unsafe void TranslateEtlFile(string etlPath, Stream stream)
         {
-            const ModuleFileIndex monoModuleIndex = (ModuleFileIndex)(-2);
             var discoveredModules = DiscoveredData<DiscoveredModule>.Make(DiscoveredModule.Invalid);
             var discoveredStackFrames = DiscoveredData<CallStackIndex>.Make(CallStackIndex.Invalid);
             var discoveredFunctions = DiscoveredData<DiscoveredFunction>.Make(DiscoveredFunction.Invalid);
@@ -274,6 +273,7 @@ namespace AsmExplorer.Profiler
                         else
                         {
                             var module = trace.ModuleFiles[dm.Index];
+                            moduleData.IsMono = false;
                             moduleData.Checksum = module.ImageChecksum;
                             moduleData.PdbAge = module.PdbAge;
                             moduleData.FilePath.CopyFrom(module.FilePath);
