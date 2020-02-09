@@ -6,6 +6,7 @@ using Microsoft.Diagnostics.Tracing.Parsers.AspNet;
 using Unity.Collections.LowLevel.Unsafe;
 using UnityEditor;
 using UnityEditor.IMGUI.Controls;
+using UnityEngine;
 
 namespace AsmExplorer {
     class HeatMapTreeView : TreeView
@@ -15,9 +16,13 @@ namespace AsmExplorer {
         string[] m_Name;
         string[] m_NumSamples;
         string[] m_Module;
+        GUIStyle m_RightAlignedLabelStyle;
 
         public HeatMapTreeView(TreeViewState state, MultiColumnHeader multiColumnHeader)
-            : base(state, multiColumnHeader) { }
+            : base(state, multiColumnHeader)
+        {
+            showAlternatingRowBackgrounds = true;
+        }
 
         public void SetData(ProfilerTrace trace, FunctionHeatMap heatMap)
         {
@@ -52,6 +57,12 @@ namespace AsmExplorer {
 
         protected override void RowGUI(RowGUIArgs args)
         {
+            if (m_RightAlignedLabelStyle == null)
+            {
+                m_RightAlignedLabelStyle = new GUIStyle(GUI.skin.label);
+                m_RightAlignedLabelStyle.alignment = TextAnchor.MiddleRight;
+            }
+
             for (int i = 0, n = args.GetNumVisibleColumns(); i < n; i++)
             {
                 var rect = args.GetCellRect(i);
@@ -72,7 +83,7 @@ namespace AsmExplorer {
                 {
                     if (m_NumSamples[idx] == null)
                         m_NumSamples[idx] = m_HeatMap.SamplesPerFunction[idx].Samples.ToString();
-                    EditorGUI.LabelField(rect, m_NumSamples[idx]);
+                    EditorGUI.LabelField(rect, m_NumSamples[idx], m_RightAlignedLabelStyle);
                 } else if (col == 2)
                 {
                     if (m_Module[idx] == null)

@@ -143,17 +143,19 @@ namespace AsmExplorer.Profiler {
 
         void UpdateHeatMap(int threadIndex)
         {
-            var heatMap = new NativeList<FunctionHeatMap.Entry>(Allocator.TempJob);
+            if (m_HasData)
+                m_HeatMap.Dispose();
+            var tmpHeatMap = new NativeList<FunctionHeatMap.Entry>(Allocator.TempJob);
             var job = new HeatMapJob
             {
                 Trace = m_Trace,
                 ThreadIndex = threadIndex,
-                HeatMap = heatMap
+                HeatMap = tmpHeatMap
             };
             job.Run();
-            m_HeatMap.SamplesPerFunction = heatMap.ToArray(Allocator.Persistent);
+            m_HeatMap.SamplesPerFunction = tmpHeatMap.ToArray(Allocator.Persistent);
             m_HasData = true;
-            heatMap.Dispose();
+            tmpHeatMap.Dispose();
 
             m_ExportCsvButton.SetEnabled(true);
             m_HeatMapTree.SetData(m_Trace, m_HeatMap);

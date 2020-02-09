@@ -10,6 +10,7 @@ using Microsoft.Diagnostics.Symbols;
 using Microsoft.Diagnostics.Tracing.Etlx;
 using Microsoft.Diagnostics.Tracing.Parsers.Kernel;
 using Microsoft.Diagnostics.Tracing.Stacks;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using UnityEditor;
@@ -286,6 +287,8 @@ namespace AsmExplorer.Profiler
                             var module = trace.ModuleFiles[dm.Index];
                             moduleData.IsMono = false;
                             moduleData.Checksum = module.ImageChecksum;
+                            moduleData.ImageBase = module.ImageBase;
+                            moduleData.ImageEnd = module.ImageEnd;
                             moduleData.PdbAge = module.PdbAge;
                             moduleData.FilePath.CopyFrom(module.FilePath);
                             moduleData.PdbName.CopyFrom(module.PdbName);
@@ -342,7 +345,13 @@ namespace AsmExplorer.Profiler
             {
                 if (method == null)
                     return "???";
-                return method.DeclaringType.Namespace + '.' + method.DeclaringType.Name + '.' + method.Name;
+                if (method.DeclaringType.DeclaringType == null)
+                {
+                    return method.DeclaringType.Namespace + '.' + method.DeclaringType.Name + '.' + method.Name;
+                }
+                var outerMost = method.DeclaringType.DeclaringType;
+                var outer = method.DeclaringType;
+                return outerMost.Namespace + '.' + outerMost.Name + '+' + outer.Name + '.' + method.Name;
             }
         }
     }

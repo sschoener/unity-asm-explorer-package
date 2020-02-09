@@ -8,6 +8,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace AsmExplorer.Profiler {
+
     class ScrewItProfiler : EditorWindow
     {
         ProfilerTrace m_Trace;

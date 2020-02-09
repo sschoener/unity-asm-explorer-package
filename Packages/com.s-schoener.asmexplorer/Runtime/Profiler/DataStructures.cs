@@ -77,6 +77,8 @@ namespace AsmExplorer.Profiler
     {
         public NativeString512 FilePath;
         public NativeString64 PdbName;
+        public ulong ImageBase;
+        public ulong ImageEnd;
         public fixed byte PdbGuid[16];
         public int PdbAge;
         public int Checksum;
