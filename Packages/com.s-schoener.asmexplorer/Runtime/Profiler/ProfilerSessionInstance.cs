@@ -16,6 +16,7 @@ namespace AsmExplorer.Profiler
         static string RecordingEtlFile => Path.Combine(s_SessionDir, k_RecordingName);
         static string OutputFile => Path.Combine(s_SessionDir, s_SessionOutputFileName);
         static bool s_SessionActive;
+        public static bool SessionActive => s_SessionActive;
 
         static ProcessStartInfo XPerfStartInfo(string args)
         {
@@ -54,10 +55,10 @@ namespace AsmExplorer.Profiler
         }
 #endif
 
-        public static void StopSession(bool finish = true)
+        public static string StopSession(bool finish = true)
         {
             if (!s_SessionActive)
-                return;
+                return null;
             s_SessionActive = false;
             Debug.Log("Stopping profiler session");
             try
@@ -69,7 +70,7 @@ namespace AsmExplorer.Profiler
                 {
                     Debug.LogError("Closing profiler session failed!");
                     Process.Start(XPerfStartInfo("-cancel"));
-                    return;
+                    return null;
                 }
             }
             catch
@@ -80,7 +81,12 @@ namespace AsmExplorer.Profiler
             }
 
             if (finish)
+            {
                 FinishSession();
+                return OutputFile;
+            }
+
+            return null;
         }
 
         static void FinishSession()
@@ -104,7 +110,7 @@ namespace AsmExplorer.Profiler
 #if UNITY_EDITOR
         static void BeforeAssemblyReload()
         {
-            StopSession();
+            StopSession(false);
             UnityEditor.AssemblyReloadEvents.beforeAssemblyReload -= BeforeAssemblyReload;
         }
 #endif

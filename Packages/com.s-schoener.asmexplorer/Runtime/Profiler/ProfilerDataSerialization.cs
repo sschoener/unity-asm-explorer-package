@@ -23,22 +23,23 @@ namespace AsmExplorer.Profiler
     {
         public static unsafe void ReadProfilerTrace(ref ProfilerTrace trace, Stream stream, Allocator allocator)
         {
-
             var basePos = stream.Position;
             var reader = new RawReader(stream);
-            ProfilerDataHeader header = default;
-            reader.Read(&header);
-            Debug.Assert(basePos + header.TotalLength <= stream.Length);
-            Debug.Log($"header data: {header.NumSamples}, {header.NumFunctions}, {header.NumModules}, {header.NumThreads}, {header.NumStackFrames}");
+            ProfilerDataSerializationHeader serializationHeader = default;
+            reader.Read(&serializationHeader);
+            Debug.Assert(basePos + serializationHeader.TotalLength <= stream.Length);
 
-            Read(ref trace.Samples, header.NumSamples, basePos + header.SamplesOffset);
-            Read(ref trace.StackFrames, header.NumStackFrames, basePos + header.StackFramesOffset);
-            Read(ref trace.Functions, header.NumFunctions, basePos + header.FunctionsOffset);
-            Read(ref trace.Modules, header.NumModules, basePos + header.ModulesOffset);
-            Read(ref trace.Threads, header.NumThreads, basePos + header.ThreadsOffset);
-            return;
+            ProfilerTraceHeader traceHeader = default;
+            reader.Read(&traceHeader);
+            trace.Header = traceHeader;
 
-            void Read<T>(ref NativeArray<T> arr, int num, long offset) where T : unmanaged
+            Read(out trace.Samples, serializationHeader.NumSamples, basePos + serializationHeader.SamplesOffset);
+            Read(out trace.StackFrames, serializationHeader.NumStackFrames, basePos + serializationHeader.StackFramesOffset);
+            Read(out trace.Functions, serializationHeader.NumFunctions, basePos + serializationHeader.FunctionsOffset);
+            Read(out trace.Modules, serializationHeader.NumModules, basePos + serializationHeader.ModulesOffset);
+            Read(out trace.Threads, serializationHeader.NumThreads, basePos + serializationHeader.ThreadsOffset);
+
+            void Read<T>(out NativeArray<T> arr, int num, long offset) where T : unmanaged
             {
                 stream.Position = basePos + offset;
                 arr = new NativeArray<T>(num, allocator, NativeArrayOptions.UninitializedMemory);
@@ -139,12 +140,13 @@ namespace AsmExplorer.Profiler
             var discoveredThreads = DiscoveredData<ThreadIndex>.Make(ThreadIndex.Invalid);
 
             var writer = new RawWriter(stream);
-            var header = new ProfilerDataHeader
+            var header = new ProfilerDataSerializationHeader
             {
                 Version = 1,
             };
             long headerPos = stream.Position;
-            writer.WriteBytes(&header, sizeof(ProfilerDataHeader));
+            // we'll write the header again later
+            writer.WriteBytes(&header, sizeof(ProfilerDataSerializationHeader));
 
             const string conv = "conversion.log";
             List<string> pdbWhitelist = new List<string>
@@ -183,6 +185,14 @@ namespace AsmExplorer.Profiler
             {
                 var processIndex = FindUnityProcessIndex(trace.Processes);
                 var processId = trace.Processes[processIndex].ProcessID;
+
+                var traceHeader = new ProfilerTraceHeader
+                {
+                    SamplingInterval = trace.SampleProfileInterval.TotalMilliseconds,
+                    SessionStart = trace.SessionStartTime.Ticks,
+                    SessionEnd = trace.SessionEndTime.Ticks,
+                };
+                writer.Write(&traceHeader);
 
                 {
                     header.SamplesOffset = stream.Position - headerPos;

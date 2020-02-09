@@ -21,20 +21,6 @@ namespace AsmExplorer
             Application.OpenURL(WebService.MakeCommandURL(ExplorerInstance.URL, WebServiceCommand.Lookup));
         }
 
-
-        [MenuItem("Window/Asm Explorer/Start Profiler Session")]
-        public static void StartProfiler()
-        {
-            var profile = Path.Combine(Application.dataPath, "ProfileTrace.ptrace");
-            ProfilerSessionInstance.SetupSession(profile);
-        }
-
-        [MenuItem("Window/Asm Explorer/Stop Profiler Session")]
-        public static void StopProfiler()
-        {
-            ProfilerSessionInstance.StopSession();
-        }
-
         [MenuItem("Window/Asm Explorer/Open Profiling Window")]
         public static void OpenProfilingWindow()
         {

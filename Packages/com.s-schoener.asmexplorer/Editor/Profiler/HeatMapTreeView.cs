@@ -8,7 +8,7 @@ using UnityEditor;
 using UnityEditor.IMGUI.Controls;
 
 namespace AsmExplorer {
-    class ProfilerTreeView : TreeView
+    class HeatMapTreeView : TreeView
     {
         FunctionHeatMap m_HeatMap;
         ProfilerTrace m_Trace;
@@ -16,7 +16,7 @@ namespace AsmExplorer {
         string[] m_NumSamples;
         string[] m_Module;
 
-        public ProfilerTreeView(TreeViewState state, MultiColumnHeader multiColumnHeader)
+        public HeatMapTreeView(TreeViewState state, MultiColumnHeader multiColumnHeader)
             : base(state, multiColumnHeader) { }
 
         public void SetData(ProfilerTrace trace, FunctionHeatMap heatMap)

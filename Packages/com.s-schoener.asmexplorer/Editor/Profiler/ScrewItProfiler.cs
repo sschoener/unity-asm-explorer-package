@@ -1,11 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using Unity.Burst;
 using Unity.Collections;
-using Unity.Jobs;
 using UnityEditor;
-using UnityEditor.IMGUI.Controls;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -13,84 +10,65 @@ using UnityEngine.UIElements;
 namespace AsmExplorer.Profiler {
     class ScrewItProfiler : EditorWindow
     {
-        ProfilerTreeView m_ProfilerTree;
         ProfilerTrace m_Trace;
-        FunctionHeatMap m_HeatMap;
         bool m_HasData;
-        int m_SelectedThread;
-        List<string> m_ThreadNames;
-        ToolbarMenu m_ThreadSelection;
+        ToolbarToggle m_RecordingToggle;
+        ToolbarMenu m_ViewSelection;
+        VisualElement m_CenterElement;
+        Toolbar m_Toolbar;
+
+        IScrewItView m_ActiveView;
+        ScrewItHeatMapView m_HeatMapView;
+        ScrewItOverview m_Overview;
+        List<IScrewItView> m_Views;
 
         void OnEnable()
         {
             titleContent = new GUIContent("Screw It! Profiler");
+            m_HeatMapView = new ScrewItHeatMapView();
+            m_Overview = new ScrewItOverview();
+
             rootVisualElement.style.flexDirection = FlexDirection.Column;
+            m_Views = new List<IScrewItView> { m_Overview, m_HeatMapView };
 
             {
-                var toolbar = new Toolbar()
-                {
-                    style =
-                    {
-                        height = 16
-                    }
-                };
+                m_Toolbar = new Toolbar { style = { height = EditorGUIUtility.singleLineHeight } };
+                m_RecordingToggle = new ToolbarToggle();
+                m_RecordingToggle.text = "Start Recording";
+                m_RecordingToggle.RegisterValueChangedCallback(OnRecordingToggled);
+                m_Toolbar.Add(m_RecordingToggle);
 
-                var loadButton = new ToolbarButton();
+                var loadButton = new ToolbarButton { style =  { unityTextAlign = TextAnchor.MiddleLeft } };
                 loadButton.clicked += ShowLoadTraceFileDialog;
                 loadButton.text = "Load Trace";
-                toolbar.Add(loadButton);
+                m_Toolbar.Add(loadButton);
 
-                m_ThreadNames = new List<string> { "" };
-                m_ThreadSelection = new ToolbarMenu
+                m_Toolbar.Add(new ToolbarSpacer { style = { flexGrow = 1 } });
+
+                m_ViewSelection =  new ToolbarMenu
                 {
                     variant = ToolbarMenu.Variant.Popup,
-                    text = "Select Thread"
+                    text = "Select view"
                 };
-                toolbar.Add(m_ThreadSelection);
-
-                rootVisualElement.Add(toolbar);
-            }
-
-            {
-                // setup header
-                var header = new VisualElement
+                foreach (var view in m_Views)
                 {
-                    style =
+                    var thisView = view;
+                    m_ViewSelection.menu.AppendAction(view.Name, action =>
                     {
-                        height = 20,
-                        flexDirection = FlexDirection.Row,
-                        flexGrow = 0
-                    }
-                };
+                        SetActiveView(thisView);
+                    });
+                }
+                m_ViewSelection.SetEnabled(false);
 
-                rootVisualElement.Add(header);
+                m_Toolbar.Add(m_ViewSelection);
+
+                rootVisualElement.Add(m_Toolbar);
             }
 
             {
                 // setup center
-                var center = new VisualElement()
-                {
-                    style =
-                    {
-                        flexGrow = 1
-                    }
-                };
-
-                var mch = new MultiColumnHeader(CreateHeaderState());
-                mch.canSort = false;
-                m_ProfilerTree = new ProfilerTreeView(new TreeViewState(), mch);
-                m_ProfilerTree.Reload();
-                var treeContainer = new IMGUIContainer()
-                {
-                    style =
-                    {
-                        flexGrow = 1
-                    }
-                };
-                treeContainer.onGUIHandler = () => m_ProfilerTree.OnGUI(treeContainer.contentRect);
-                mch.ResizeToFit();
-                center.Add(treeContainer);
-                rootVisualElement.Add(center);
+                m_CenterElement = new VisualElement { style = { flexGrow = 1 } };;
+                rootVisualElement.Add(m_CenterElement);
             }
 
             {
@@ -108,6 +86,51 @@ namespace AsmExplorer.Profiler {
             }
         }
 
+        void SetActiveView(IScrewItView view)
+        {
+            if (m_ActiveView != null)
+            {
+                m_ActiveView.OnDisable();
+                m_CenterElement.Remove(m_ActiveView.Root);
+                foreach (var elem in m_ActiveView.ToolbarItems)
+                    m_Toolbar.Remove(elem);
+            }
+
+            m_ActiveView = view;
+
+            if (m_ActiveView != null)
+            {
+                m_CenterElement.Add(m_ActiveView.Root);
+                m_ActiveView.OnEnable();
+                m_ViewSelection.text = m_ActiveView.Name;
+                foreach (var elem in m_ActiveView.ToolbarItems)
+                    m_Toolbar.Insert(m_Toolbar.childCount - 1, elem);
+            }
+            else
+                m_ViewSelection.text = "Select view";
+        }
+
+        void OnRecordingToggled(ChangeEvent<bool> evt)
+        {
+            if (ProfilerSessionInstance.SessionActive)
+            {
+                var file = ProfilerSessionInstance.StopSession();
+                if (!string.IsNullOrEmpty(file))
+                    LoadTraceFile(file);
+            }
+            else
+            {
+                string file = EditorUtility.SaveFilePanel("Select trace path", Application.dataPath, "ProfileTrace", "ptrace");
+                if (string.IsNullOrEmpty(file))
+                    return;
+                ProfilerSessionInstance.SetupSession(file);
+            }
+
+            bool isActive = ProfilerSessionInstance.SessionActive;
+            m_RecordingToggle.SetValueWithoutNotify(isActive);
+            m_RecordingToggle.text = isActive ? "Stop Recording" : "Start Recording";
+        }
+
         static readonly string[] k_ProfileFileFilter = { "Profiler Traces", "ptrace" };
         void ShowLoadTraceFileDialog()
         {
@@ -117,75 +140,31 @@ namespace AsmExplorer.Profiler {
             LoadTraceFile(file);
         }
 
-        [BurstCompile]
-        struct HeatMapJob : IJob
-        {
-            public NativeList<FunctionHeatMap.Entry> HeatMap;
-            [ReadOnly]
-            public ProfilerTrace Trace;
-            public int ThreadIndex;
-
-            public void Execute()
-            {
-                FunctionHeatMap.BuildFromTrace(HeatMap, ref Trace, ThreadIndex);
-            }
-        }
-
-        void UpdateHeatMap(int threadIndex)
-        {
-            var heatMap = new NativeList<FunctionHeatMap.Entry>(Allocator.TempJob);
-            var job = new HeatMapJob
-            {
-                Trace = m_Trace,
-                ThreadIndex = threadIndex,
-                HeatMap = heatMap
-            };
-            job.Run();
-            m_HeatMap.SamplesPerFunction = heatMap.ToArray(Allocator.Persistent);
-            heatMap.Dispose();
-            m_ProfilerTree.SetData(m_Trace, m_HeatMap);
-            m_ProfilerTree.Reload();
-        }
-
         void LoadTraceFile(string path)
         {
             ClearData();
-
             using (var stream = File.OpenRead(path))
             {
                 ProfilerDataSerialization.ReadProfilerTrace(ref m_Trace, stream, Allocator.Persistent);
             }
 
-            m_ThreadNames.Clear();
-            for (int i = 0; i < m_Trace.Threads.Length; i++)
-            {
-                var thread = m_Trace.Threads[i];
-                string threadName;
-                if (thread.ThreadName.LengthInBytes == 0)
-                    threadName = "Thread " + i + " (unnamed)";
-                else
-                    threadName = thread.ThreadName.ToString();
-                m_ThreadNames.Add(threadName);
-                int index = i;
-                m_ThreadSelection.menu.AppendAction(threadName, action =>
-                {
-                    m_ThreadSelection.text = action.name;
-                    UpdateHeatMap(index);
-                });
-            }
-
-            m_ThreadSelection.text = m_ThreadNames[0];
-            UpdateHeatMap(0);
+            foreach (var view in m_Views)
+                view.SetData(ref m_Trace);
             m_HasData = true;
+            SetActiveView(m_Overview);
+            m_ViewSelection.SetEnabled(true);
         }
 
         void ClearData()
         {
             if (m_HasData)
             {
+                foreach (var view in m_Views)
+                    view.ClearData();
                 m_Trace.Dispose();
-                m_HeatMap.Dispose();
                 m_HasData = false;
+                m_ViewSelection.SetEnabled(false);
+                SetActiveView(null);
             }
         }
 
@@ -193,21 +172,16 @@ namespace AsmExplorer.Profiler {
         {
             ClearData();
         }
+    }
 
-        static MultiColumnHeaderState CreateHeaderState() => new MultiColumnHeaderState(new[]
-        {
-            new MultiColumnHeaderState.Column
-            {
-                headerContent = new GUIContent("CallStack"),
-            },
-            new MultiColumnHeaderState.Column
-            {
-                headerContent = new GUIContent("Total samples"),
-            },
-            new MultiColumnHeaderState.Column
-            {
-                headerContent = new GUIContent("Module")
-            }
-        });
+    interface IScrewItView
+    {
+        string Name { get;  }
+        VisualElement Root { get; }
+        IEnumerable<VisualElement> ToolbarItems { get; }
+        void OnEnable();
+        void OnDisable();
+        void SetData(ref ProfilerTrace trace);
+        void ClearData();
     }
 }

@@ -5,6 +5,7 @@ namespace AsmExplorer.Profiler
 {
     struct ProfilerTrace : IDisposable
     {
+        public ProfilerTraceHeader Header;
         public NativeArray<SampleData> Samples;
         public NativeArray<FunctionData> Functions;
         public NativeArray<ModuleData> Modules;
@@ -21,7 +22,7 @@ namespace AsmExplorer.Profiler
         }
     }
 
-    unsafe struct ProfilerDataHeader
+    unsafe struct ProfilerDataSerializationHeader
     {
         public int Version;
         public int TotalLength;
@@ -40,6 +41,14 @@ namespace AsmExplorer.Profiler
 
         public int NumThreads;
         public long ThreadsOffset;
+
+    }
+
+    struct ProfilerTraceHeader
+    {
+        public double SamplingInterval;
+        public long SessionStart;
+        public long SessionEnd;
     }
 
     unsafe struct ThreadData
