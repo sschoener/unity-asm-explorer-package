@@ -1,19 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Reflection;
-using System.Security;
-using System.Text;
-using System.Threading;
-using System.Xml.Schema;
-using Microsoft.Diagnostics.Tracing;
-using Microsoft.Diagnostics.Tracing.Etlx;
-using Microsoft.Diagnostics.Tracing.Parsers;
-using Microsoft.Diagnostics.Tracing.Parsers.Kernel;
-using Microsoft.Diagnostics.Tracing.Session;
-using Unity.Collections.LowLevel.Unsafe;
-using UnityEditor;
 using Debug = UnityEngine.Debug;
 
 namespace AsmExplorer.Profiler
@@ -99,7 +86,9 @@ namespace AsmExplorer.Profiler
         static void FinishSession()
         {
             Debug.Log("Finishing profiler session, outputting to " + OutputFile);
-            EditorUtility.DisplayProgressBar("Finishing profiler session", "outputting to " + OutputFile, 0);
+#if UNITY_EDITOR
+            UnityEditor.EditorUtility.DisplayProgressBar("Finishing profiler session", "outputting to " + OutputFile, 0);
+#endif
             try
             {
                 using (var output = File.OpenWrite(OutputFile))
@@ -107,7 +96,9 @@ namespace AsmExplorer.Profiler
             }
             finally
             {
-                EditorUtility.ClearProgressBar();
+#if UNITY_EDITOR
+                UnityEditor.EditorUtility.ClearProgressBar();
+#endif
             }
         }
 #if UNITY_EDITOR

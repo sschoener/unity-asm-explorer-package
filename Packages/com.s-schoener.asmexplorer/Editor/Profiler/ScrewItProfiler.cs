@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading;
 using Unity.Burst;
 using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using UnityEditor;
 using UnityEditor.IMGUI.Controls;
@@ -19,13 +17,39 @@ namespace AsmExplorer.Profiler {
         ProfilerTrace m_Trace;
         FunctionHeatMap m_HeatMap;
         bool m_HasData;
+        int m_SelectedThread;
         List<string> m_ThreadNames;
-        PopupField<string> m_ThreadSelection;
+        ToolbarMenu m_ThreadSelection;
 
         void OnEnable()
         {
             titleContent = new GUIContent("Screw It! Profiler");
             rootVisualElement.style.flexDirection = FlexDirection.Column;
+
+            {
+                var toolbar = new Toolbar()
+                {
+                    style =
+                    {
+                        height = 16
+                    }
+                };
+
+                var loadButton = new ToolbarButton();
+                loadButton.clicked += ShowLoadTraceFileDialog;
+                loadButton.text = "Load Trace";
+                toolbar.Add(loadButton);
+
+                m_ThreadNames = new List<string> { "" };
+                m_ThreadSelection = new ToolbarMenu
+                {
+                    variant = ToolbarMenu.Variant.Popup,
+                    text = "Select Thread"
+                };
+                toolbar.Add(m_ThreadSelection);
+
+                rootVisualElement.Add(toolbar);
+            }
 
             {
                 // setup header
@@ -38,38 +62,6 @@ namespace AsmExplorer.Profiler {
                         flexGrow = 0
                     }
                 };
-
-                var loadButton = new Button
-                {
-                    style =
-                    {
-                        width = 150,
-                    }
-                };
-                loadButton.clicked += ShowLoadTraceFileDialog;
-                loadButton.text = "Load Trace";
-                header.Add(loadButton);
-
-                m_ThreadNames = new List<string> { "" };
-                m_ThreadSelection = new PopupField<string>(m_ThreadNames, 0)
-                {
-                    style =
-                    {
-                        width = 150
-                    }
-                };
-                header.Add(m_ThreadSelection);
-
-                var updateButton = new Button
-                {
-                    style =
-                    {
-                        width = 150
-                    }
-                };
-                updateButton.clicked += UpdateThread;
-                updateButton.text = "Update";
-                header.Add(updateButton);
 
                 rootVisualElement.Add(header);
             }
@@ -116,15 +108,6 @@ namespace AsmExplorer.Profiler {
             }
         }
 
-        void UpdateThread()
-        {
-            if (!m_HasData) return;
-            m_HeatMap.Dispose();
-            UpdateHeatMap(m_ThreadSelection.index);
-            m_ProfilerTree.SetData(m_Trace, m_HeatMap);
-            m_ProfilerTree.Reload();
-        }
-
         static readonly string[] k_ProfileFileFilter = { "Profiler Traces", "ptrace" };
         void ShowLoadTraceFileDialog()
         {
@@ -160,6 +143,8 @@ namespace AsmExplorer.Profiler {
             job.Run();
             m_HeatMap.SamplesPerFunction = heatMap.ToArray(Allocator.Persistent);
             heatMap.Dispose();
+            m_ProfilerTree.SetData(m_Trace, m_HeatMap);
+            m_ProfilerTree.Reload();
         }
 
         void LoadTraceFile(string path)
@@ -181,12 +166,16 @@ namespace AsmExplorer.Profiler {
                 else
                     threadName = thread.ThreadName.ToString();
                 m_ThreadNames.Add(threadName);
+                int index = i;
+                m_ThreadSelection.menu.AppendAction(threadName, action =>
+                {
+                    m_ThreadSelection.text = action.name;
+                    UpdateHeatMap(index);
+                });
             }
-            m_ThreadSelection.SetValueWithoutNotify(m_ThreadNames[0]);
 
+            m_ThreadSelection.text = m_ThreadNames[0];
             UpdateHeatMap(0);
-            m_ProfilerTree.SetData(m_Trace, m_HeatMap);
-            m_ProfilerTree.Reload();
             m_HasData = true;
         }
 
