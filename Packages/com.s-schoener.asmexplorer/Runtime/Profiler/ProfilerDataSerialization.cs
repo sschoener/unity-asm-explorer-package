@@ -148,7 +148,6 @@ namespace AsmExplorer.Profiler
             // we'll write the header again later
             writer.WriteBytes(&header, sizeof(ProfilerDataSerializationHeader));
 
-            const string conv = "conversion.log";
             List<string> pdbWhitelist = new List<string>
             {
                 "user32.dll",
@@ -163,12 +162,14 @@ namespace AsmExplorer.Profiler
                 "kernel32.dll",
                 "ntoskrnl.exe",
             };
-            if (File.Exists(conv))
-                File.Delete(conv);
-            var log = new StreamWriter(File.Open(conv, FileMode.Create, FileAccess.Write, FileShare.Read));
+
+            //const string conv = "conversion.log";
+            //if (File.Exists(conv))
+            //    File.Delete(conv);
+            //var log = new StreamWriter(File.Open(conv, FileMode.Create, FileAccess.Write, FileShare.Read));
             var options = new TraceLogOptions()
             {
-                ConversionLog = log,
+                //ConversionLog = log,
                 AlwaysResolveSymbols = true,
                 LocalSymbolsOnly = false,
                 AllowUnsafeSymbols = true,
@@ -318,8 +319,8 @@ namespace AsmExplorer.Profiler
                 stream.Flush();
             }
 
-            options.ConversionLog.Close();
-            options.ConversionLog.Dispose();
+            //log.Close();
+            //log.Dispose();
 
             int GetFunctionIndex(TraceCodeAddress address)
             {
