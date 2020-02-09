@@ -1,31 +1,50 @@
 ﻿using System;
+using Unity.Collections;
 
 namespace AsmExplorer.Profiler
 {
+    struct ProfilerTrace : IDisposable
+    {
+        public NativeArray<SampleData> Samples;
+        public NativeArray<FunctionData> Functions;
+        public NativeArray<ModuleData> Modules;
+        public NativeArray<StackFrameData> StackFrames;
+        public NativeArray<ThreadData> Threads;
+
+        public void Dispose()
+        {
+            Samples.Dispose();
+            Functions.Dispose();
+            Modules.Dispose();
+            StackFrames.Dispose();
+            Threads.Dispose();
+        }
+    }
+
     unsafe struct ProfilerDataHeader
     {
         public int Version;
+        public int TotalLength;
 
-        public uint NumSamples;
-        public long SamplesOffset => sizeof(ProfilerDataHeader);
+        public int NumSamples;
+        public long SamplesOffset;
 
-        public uint NumFunctions;
-        public long FunctionsOffset => SamplesOffset + NumSamples * sizeof(SampleData);
+        public int NumStackFrames;
+        public long StackFramesOffset;
 
-        public uint NumModules;
-        public long ModulesOffset => FunctionsOffset + NumFunctions * sizeof(FunctionData);
+        public int NumFunctions;
+        public long FunctionsOffset;
 
-        public uint NumStackTraces;
-        public long StackTracesOffset => ModulesOffset + NumModules + sizeof(ModuleData);
+        public int NumModules;
+        public long ModulesOffset;
 
-        public uint NumThreads;
-        public long ThreadsOffset => StackTracesOffset + NumStackTraces * sizeof(StackFrameData);
+        public int NumThreads;
+        public long ThreadsOffset;
     }
 
     unsafe struct ThreadData
     {
-        public const int MaxThreadNameLength = 64;
-        public fixed char ThreadName[MaxThreadNameLength];
+        public NativeString64 ThreadName;
     }
 
     struct SampleData
@@ -34,7 +53,7 @@ namespace AsmExplorer.Profiler
         public int Function;
         public long Address;
         public double TimeStamp;
-        public int ThreadId;
+        public int ThreadIdx;
     }
 
     struct StackFrameData
@@ -47,20 +66,18 @@ namespace AsmExplorer.Profiler
 
     unsafe struct ModuleData
     {
-        public const int MaxPathLength = 512;
-        public const int MaxPdbNameLength = 64;
-        public int Checksum;
-        public fixed char FilePath[MaxPathLength];
+        public NativeString512 FilePath;
+        public NativeString64 PdbName;
         public fixed byte PdbGuid[16];
-        public fixed char PdbName[MaxPathLength];
         public int PdbAge;
+        public int Checksum;
+        public bool IsMono;
     }
 
     unsafe struct FunctionData
     {
-        public const int MaxNameLength = 256;
         public int Module;
-        public fixed char Name[MaxNameLength];
+        public NativeString512 Name;
 
         public long BaseAddress;
         public int Length;

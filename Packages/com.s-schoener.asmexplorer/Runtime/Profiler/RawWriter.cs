@@ -3,18 +3,16 @@ using System.IO;
 using Unity.Collections.LowLevel.Unsafe;
 
 namespace AsmExplorer.Profiler {
-    struct RawWriter : IDisposable
+    struct RawWriter
     {
-        BinaryWriter m_Writer;
+        Stream m_Stream;
         byte[] m_Buffer;
 
-        public RawWriter(BinaryWriter writer, int bufferSize = 65536)
+        public RawWriter(Stream stream, int bufferSize = 65536)
         {
-            m_Writer = writer;
+            m_Stream = stream;
             m_Buffer = new byte[bufferSize];
         }
-
-        public void Dispose() => m_Writer.Dispose();
 
         public unsafe void WriteBytes(void* data, int bytes)
         {
@@ -27,11 +25,13 @@ namespace AsmExplorer.Profiler {
                 {
                     int bytesToWrite = Math.Min(remaining, bufferSize);
                     UnsafeUtility.MemCpy(fixedBuffer, data, bytesToWrite);
-                    m_Writer.Write(m_Buffer, 0, bytesToWrite);
+                    m_Stream.Write(m_Buffer, 0, bytesToWrite);
                     data = (byte*) data + bytesToWrite;
                     remaining -= bytesToWrite;
                 }
             }
         }
+
+        public unsafe void Write<T>(T* data) where T : unmanaged => WriteBytes(data, sizeof(T));
     }
 }

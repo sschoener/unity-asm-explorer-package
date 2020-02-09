@@ -25,7 +25,7 @@ namespace AsmExplorer
         [MenuItem("Window/Asm Explorer/Start Profiler Session")]
         public static void StartProfiler()
         {
-            var profile = Path.Combine(Application.dataPath, "ProfileTrace.dat");
+            var profile = Path.Combine(Application.dataPath, "ProfileTrace.ptrace");
             ProfilerSessionInstance.SetupSession(profile);
         }
 
@@ -33,6 +33,12 @@ namespace AsmExplorer
         public static void StopProfiler()
         {
             ProfilerSessionInstance.StopSession();
+        }
+
+        [MenuItem("Window/Asm Explorer/Open Profiling Window")]
+        public static void OpenProfilingWindow()
+        {
+            EditorWindow.GetWindow<ScrewItProfiler>().Show();
         }
     }
 }
