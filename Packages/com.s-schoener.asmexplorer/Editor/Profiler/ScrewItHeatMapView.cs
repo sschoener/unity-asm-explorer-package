@@ -20,6 +20,7 @@ namespace AsmExplorer.Profiler {
         ToolbarButton m_ExportCsvButton;
         bool m_HasData;
         readonly List<VisualElement> m_ToolbarItems = new List<VisualElement>();
+        readonly MultiColumnHeader m_ColumnHeader;
 
         public ScrewItHeatMapView()
         {
@@ -38,20 +39,24 @@ namespace AsmExplorer.Profiler {
             m_ExportCsvButton.clicked += ExportCsvButton;
             m_ToolbarItems.Add(m_ExportCsvButton);
 
-            var mch = new MultiColumnHeader(CreateHeaderState());
-            mch.canSort = false;
-            m_HeatMapTree = new HeatMapTreeView(new TreeViewState(), mch);
+            m_ColumnHeader = new MultiColumnHeader(CreateHeaderState());
+            m_ColumnHeader.canSort = false;
+            m_HeatMapTree = new HeatMapTreeView(new TreeViewState(), m_ColumnHeader);
             m_HeatMapTree.Reload();
             var treeContainer = new IMGUIContainer { style = { flexGrow = 1 } };
             treeContainer.onGUIHandler = () => m_HeatMapTree.OnGUI(treeContainer.contentRect);
-            mch.ResizeToFit();
+            m_ColumnHeader.ResizeToFit();
             Root.Add(treeContainer);
         }
 
         public string Name => "Function HeatMap";
 
         public IEnumerable<VisualElement> ToolbarItems => m_ToolbarItems;
-        public void OnEnable() { }
+
+        public void OnEnable()
+        {
+            m_ColumnHeader.ResizeToFit();
+        }
         public void OnDisable() { }
 
         void ExportCsvButton()
@@ -167,14 +172,19 @@ namespace AsmExplorer.Profiler {
             new MultiColumnHeaderState.Column
             {
                 headerContent = new GUIContent("Function name"),
+                width = 600
             },
             new MultiColumnHeaderState.Column
             {
                 headerContent = new GUIContent("Total samples"),
+                width = 100,
+                minWidth = 100,
+                maxWidth = 100,
             },
             new MultiColumnHeaderState.Column
             {
-                headerContent = new GUIContent("Module")
+                headerContent = new GUIContent("Module"),
+                width = 400
             }
         });
     }
