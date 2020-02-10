@@ -330,7 +330,7 @@ namespace AsmExplorer.Profiler
                 var method = address.Method;
                 if (method == null)
                 {
-                    var jit = Mono.GetJitInfo(new IntPtr((long)address.Address));
+                    var jit = Mono.GetJitInfoAnyDomain(new IntPtr((long)address.Address), out _);
                     if (jit.Method == null)
                         return -1;
                     return discoveredFunctions.AddData(DiscoveredFunction.FromMethod(jit));

@@ -1,6 +1,9 @@
 using System;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Text;
+using Microsoft.Diagnostics.Tracing.Parsers.FrameworkEventSource;
 
 namespace AsmExplorer
 {
@@ -14,34 +17,66 @@ namespace AsmExplorer
 #endif
 
         [DllImport(MonoDllName, CallingConvention = CallingConvention.FastCall, EntryPoint = "mono_domain_get", CharSet = CharSet.Ansi)]
-        private static extern IntPtr GetDomain();
+        static extern IntPtr GetDomain();
 
         [DllImport(MonoDllName, EntryPoint = "mono_jit_info_table_find", CharSet = CharSet.Ansi)]
-        private static extern IntPtr FindJitInfo(IntPtr domain, IntPtr instructionPointer);
+        static extern IntPtr FindJitInfo(IntPtr domain, IntPtr instructionPointer);
 
         [DllImport(MonoDllName, EntryPoint = "mono_jit_info_get_code_start", CharSet = CharSet.Ansi)]
-        private static extern IntPtr GetCodeStart(IntPtr jitInfo);
+        static extern IntPtr GetCodeStart(IntPtr jitInfo);
 
         [DllImport(MonoDllName, EntryPoint = "mono_jit_info_get_code_size", CharSet = CharSet.Ansi)]
-        private static extern int GetCodeSize(IntPtr jitInfo);
+        static extern int GetCodeSize(IntPtr jitInfo);
 
         [DllImport(MonoDllName, EntryPoint = "mono_jit_info_get_method", CharSet = CharSet.Ansi)]
-        private static extern IntPtr GetMethod(IntPtr jitInfo);
+        static extern IntPtr GetMethod(IntPtr jitInfo);
+
+        [DllImport(MonoDllName, EntryPoint = "mono_pmip", CharSet = CharSet.Ansi)]
+        static extern sbyte* PMip_Internal(IntPtr instructionPointer);
 
         [DllImport(MonoDllName, EntryPoint = "mono_method_get_name", CharSet = CharSet.Ansi)]
-        private static extern IntPtr GetMethodName(IntPtr monoMethod);
+        static extern IntPtr GetMethodName(IntPtr monoMethod);
 
         [DllImport(MonoDllName, EntryPoint = "mono_method_get_header", CharSet = CharSet.Ansi)]
-        private static extern IntPtr GetMethodHeader(IntPtr monoMethod);
+        static extern IntPtr GetMethodHeader(IntPtr monoMethod);
 
         [DllImport(MonoDllName, EntryPoint = "mono_metadata_free_mh", CharSet = CharSet.Ansi)]
-        private static extern void FreeMethodHeader(IntPtr methodHeader);
+        static extern void FreeMethodHeader(IntPtr methodHeader);
 
         [DllImport(MonoDllName, EntryPoint = "mono_method_header_get_code", CharSet = CharSet.Ansi)]
-        private static extern unsafe byte* GetIlCode(IntPtr methodHeader, uint* codeSize, uint* maxStack); // returns const unsigned char*
+        static extern byte* GetIlCode(IntPtr methodHeader, uint* codeSize, uint* maxStack); // returns const unsigned char*
 
         [DllImport(MonoDllName, EntryPoint = "mono_opcode_value", CharSet = CharSet.Ansi)]
-        private static extern int GetIlOpcodeValue(byte** ip, byte* end); // return MonoOpcodeEnum
+        static extern int GetIlOpcodeValue(byte** ip, byte* end); // return MonoOpcodeEnum
+
+        [DllImport(MonoDllName, EntryPoint = "mono_domain_foreach", CharSet = CharSet.Ansi)]
+        static extern void MonoDomainForeach(IntPtr func, void* userData);
+        [DllImport(MonoDllName, EntryPoint = "mono_domain_get_id", CharSet = CharSet.Ansi)]
+        static extern int MonoDomainGetId(IntPtr domain);
+        [DllImport(MonoDllName, EntryPoint = "mono_domain_get_by_id", CharSet = CharSet.Ansi)]
+        static extern IntPtr MonoDomainGetById(int id);
+        [DllImport(MonoDllName, EntryPoint = "mono_domain_get_friendly_name", CharSet = CharSet.Ansi)]
+        static extern byte* MonoDomainGetFriendlyName(IntPtr domain);
+
+        static void FindJitInfo_Iterator(IntPtr domain, void* userData)
+        {
+            var jitLookup = (MonoJitLookup*)userData;
+            if (jitLookup->JitInfo != IntPtr.Zero)
+                return;
+            var jitInfo = FindJitInfo(domain, jitLookup->InstructionPointer);
+            if (jitInfo != IntPtr.Zero)
+            {
+                jitLookup->JitInfo = jitInfo;
+                jitLookup->DomainId = MonoDomainGetId(domain);
+            }
+        }
+
+        struct MonoJitLookup
+        {
+            public IntPtr InstructionPointer;
+            public IntPtr JitInfo;
+            public int DomainId;
+        }
 
         public static void ForceCompilation(MethodInfo method)
         {
@@ -51,9 +86,10 @@ namespace AsmExplorer
 
         internal static IntPtr Domain => GetDomain();
 
-        private static ConstructorInfo _methodHandleCtor;
-        private static object[] _parameterTmp;
-        private static RuntimeMethodHandle MakeMethodHandle(IntPtr monoMethod)
+        static ConstructorInfo _methodHandleCtor;
+        static object[] _parameterTmp;
+
+        static RuntimeMethodHandle MakeMethodHandle(IntPtr monoMethod)
         {
             if (_methodHandleCtor == null)
             {
@@ -65,8 +101,9 @@ namespace AsmExplorer
             return (RuntimeMethodHandle)_methodHandleCtor.Invoke(_parameterTmp);
         }
 
-        private static ConstructorInfo _methodInfoCtor;
-        private static MethodInfo MakeMethodInfo(RuntimeMethodHandle handle)
+        static ConstructorInfo _methodInfoCtor;
+
+        static MethodInfo MakeMethodInfo(RuntimeMethodHandle handle)
         {
             if (_methodInfoCtor == null)
             {
@@ -78,44 +115,66 @@ namespace AsmExplorer
             return (MethodInfo)_methodInfoCtor.Invoke(_parameterTmp);
         }
 
-        private static ConstructorInfo _ctorInfoCtor;
-        private static Type _monoCtorType;
-        private static FieldInfo _ctorHandleField;
-        private static ConstructorInfo MakeCtorInfo(IntPtr handle)
+        static ConstructorInfo s_CtorInfoCtor;
+        static Type s_MonoCtorType;
+        static FieldInfo s_CtorHandleField;
+
+        static ConstructorInfo MakeCtorInfo(IntPtr handle)
         {
-            if (_monoCtorType == null)
+            if (s_MonoCtorType == null)
             {
-                _monoCtorType = Type.GetType("System.Reflection.MonoCMethod");
-                _ctorHandleField = _monoCtorType.GetField("mhandle", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                s_MonoCtorType = Type.GetType("System.Reflection.MonoCMethod");
+                s_CtorHandleField = s_MonoCtorType.GetField("mhandle", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             }
-            object ctor = Activator.CreateInstance(_monoCtorType);
-            _ctorHandleField.SetValue(ctor, handle);
+            object ctor = Activator.CreateInstance(s_MonoCtorType);
+            s_CtorHandleField.SetValue(ctor, handle);
             return (ConstructorInfo)ctor;
         }
 
-        public static MonoJitInfo GetJitInfo(IntPtr instructionPointer)
+        static IntPtr s_FindJitInfoFunctionPtr;
+        public static MonoJitInfo GetJitInfoAnyDomain(IntPtr instructionPointer, out int domainId)
         {
-            var jitInfo = FindJitInfo(GetDomain(), instructionPointer);
-            if (jitInfo.ToInt64() == 0)
+            var lookup = new MonoJitLookup
             {
-                return new MonoJitInfo(new MonoMethod(), null, (IntPtr)null, 0);
+                InstructionPointer = instructionPointer
+            };
+            domainId = 0;
+            if (s_FindJitInfoFunctionPtr == IntPtr.Zero)
+            {
+                var method = typeof(Mono).GetMethod(nameof(FindJitInfo_Iterator), BindingFlags.Static | BindingFlags.NonPublic);
+                s_FindJitInfoFunctionPtr = method.MethodHandle.GetFunctionPointer();
             }
+            MonoDomainForeach(s_FindJitInfoFunctionPtr, &lookup);
+            return ResolveJitInfo(lookup.JitInfo);
+        }
+
+        static MonoJitInfo ResolveJitInfo(IntPtr jitInfo)
+        {
+            if (jitInfo.ToInt64() == 0)
+                return new MonoJitInfo(new MonoMethod(), null, (IntPtr)null, 0, null);
             IntPtr codeStart = GetCodeStart(jitInfo);
             int codeSize = GetCodeSize(jitInfo);
             IntPtr monoMethod = GetMethod(jitInfo);
             MethodBase method = null;
+            string name = null;
             if (monoMethod != (IntPtr)null)
             {
                 // For some reason, adding marshalling annotations to GetMethodName
                 // causes crashes. This is the workaround.
                 var namePtr = GetMethodName(monoMethod);
-                string name = Marshal.PtrToStringAnsi(namePtr);
+                name = Marshal.PtrToStringAnsi(namePtr);
                 if (name == ".ctor" || name == ".cctor")
                     method = MakeCtorInfo(monoMethod);
                 else
                     method = MakeMethodInfo(MakeMethodHandle(monoMethod));
             }
-            return new MonoJitInfo(new MonoMethod(monoMethod), method, codeStart, codeSize);
+            return new MonoJitInfo(new MonoMethod(monoMethod), method, codeStart, codeSize, name);
+        }
+
+        public static MonoJitInfo GetJitInfo(IntPtr instructionPointer)
+        {
+            var jitInfo = FindJitInfo(GetDomain(), instructionPointer);
+            return ResolveJitInfo(jitInfo);
         }
 
         public static MonoJitInfo GetJitInfo(MethodBase method)

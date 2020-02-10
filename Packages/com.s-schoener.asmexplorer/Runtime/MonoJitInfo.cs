@@ -8,12 +8,14 @@ namespace AsmExplorer
         public readonly int CodeSize;
         public readonly MethodBase Method;
         public readonly MonoMethod MonoMethod;
+        public readonly string Name;
 
-        public MonoJitInfo(MonoMethod monoMethod, MethodBase method, IntPtr codePtr, int codeSize) {
+        public MonoJitInfo(MonoMethod monoMethod, MethodBase method, IntPtr codePtr, int codeSize, string name) {
             MonoMethod = monoMethod;
             Method = method;
             CodeStart = codePtr;
             CodeSize = codeSize;
+            Name = name;
         }
     }
 

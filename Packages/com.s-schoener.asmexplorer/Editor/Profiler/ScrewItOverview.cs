@@ -43,8 +43,23 @@ namespace AsmExplorer.Profiler {
                             writer.Write(Path.GetFileName(modules[module].FilePath.ToString()));
 
                         writer.Write(',');
-                        writer.WriteLine(m_Trace.Samples[i].StackTrace >= 0 ? "YES" : "NO");
+                        FindCaller(m_Trace.Samples[i].StackTrace, writer);
+                        writer.WriteLine();
                     }
+                }
+            }
+
+            void FindCaller(int stackTrace, StreamWriter writer)
+            {
+                int idx = stackTrace;
+                while (idx > -1)
+                {
+                    int func = m_Trace.StackFrames[idx].Function;
+                    if (func > -1)
+                        writer.Write(m_Trace.Functions[func].Name + " <- ");
+                    else
+                        writer.Write("??? <- ");
+                    idx = m_Trace.StackFrames[idx].CallerStackFrame;
                 }
             }
 
