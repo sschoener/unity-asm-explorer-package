@@ -55,8 +55,14 @@ namespace AsmExplorer.Profiler {
                 while (idx > -1)
                 {
                     int func = m_Trace.StackFrames[idx].Function;
-                    if (func > -1)
+                    if (func > -1) {
+                        var mod = m_Trace.Functions[func].Module;
+                        if (mod > -1) {
+                            var modName = Path.GetFileName(m_Trace.Modules[mod].FilePath.ToString());
+                            writer.Write(modName + "!");
+                        }
                         writer.Write(m_Trace.Functions[func].Name + " <- ");
+                    }
                     else
                         writer.Write("??? <- ");
                     idx = m_Trace.StackFrames[idx].CallerStackFrame;

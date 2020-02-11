@@ -1,21 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading;
-using Microsoft.Diagnostics.Symbols;
 using Microsoft.Diagnostics.Tracing.Etlx;
 using Microsoft.Diagnostics.Tracing.Parsers.Kernel;
-using Microsoft.Diagnostics.Tracing.Stacks;
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using UnityEditor;
-using UnityEditor.PackageManager.UI;
-using UnityEngine;
 using Debug = UnityEngine.Debug;
 
 namespace AsmExplorer.Profiler
@@ -160,6 +152,9 @@ namespace AsmExplorer.Profiler
                 "d3d11.dll",
                 "msvcrt.dll",
                 "wow64.dll",
+                "win32u.dll",
+                "dxgi.dll",
+                "win32kfull.sys",
                 "kernel32.dll",
                 "ntoskrnl.exe",
             };
