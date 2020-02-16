@@ -56,21 +56,27 @@ namespace AsmExplorer.Profiler
         public NativeString64 ThreadName;
     }
 
-    struct SampleData
+    struct SampleData : IEquatable<SampleData>
     {
         public int StackTrace;
         public int Function;
         public long Address;
         public double TimeStamp;
         public int ThreadIdx;
+
+        public bool Equals(SampleData other) =>
+            StackTrace  == other.StackTrace && Function == other.Function && Address == other.Address && TimeStamp == other.TimeStamp && ThreadIdx == other.ThreadIdx;
     }
 
-    struct StackFrameData
+    struct StackFrameData : IEquatable<StackFrameData>
     {
         public long Address;
         public int Function;
         public int CallerStackFrame;
         public int Depth;
+
+        public bool Equals(StackFrameData other) =>
+            Address == other.Address && Function == other.Function && CallerStackFrame == other.CallerStackFrame && Depth == other.Depth;
     }
 
     unsafe struct ModuleData

@@ -124,7 +124,6 @@ namespace AsmExplorer.Profiler
             };
         }
 
-
         public static unsafe void TranslateEtlFile(string etlPath, Stream stream)
         {
             var discoveredModules = DiscoveredData<DiscoveredModule>.Make(DiscoveredModule.Invalid);

@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using Unity.Burst;
 using Unity.Collections;
@@ -10,10 +9,11 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace AsmExplorer.Profiler {
+namespace AsmExplorer.Profiler
+{
     class ScrewItHeatMapView : IScrewItView
     {
-        readonly HeatMapTreeView m_HeatMapTree;
+        readonly HeatMapTreeView m_HeatMapTreeView;
         readonly ToolbarMenu m_ThreadSelection;
         FunctionHeatMap m_HeatMap;
         ProfilerTrace m_Trace;
@@ -39,12 +39,13 @@ namespace AsmExplorer.Profiler {
             m_ExportCsvButton.clicked += ExportCsvButton;
             m_ToolbarItems.Add(m_ExportCsvButton);
 
-            m_ColumnHeader = new MultiColumnHeader(CreateHeaderState());
-            m_ColumnHeader.canSort = false;
-            m_HeatMapTree = new HeatMapTreeView(new TreeViewState(), m_ColumnHeader);
-            m_HeatMapTree.Reload();
+            m_ColumnHeader = new MultiColumnHeader(CreateHeaderState())
+            {
+                canSort = false
+            };
+            m_HeatMapTreeView = new HeatMapTreeView(new TreeViewState(), m_ColumnHeader);
             var treeContainer = new IMGUIContainer { style = { flexGrow = 1 } };
-            treeContainer.onGUIHandler = () => m_HeatMapTree.OnGUI(treeContainer.contentRect);
+            treeContainer.onGUIHandler = () => m_HeatMapTreeView.OnGUI(treeContainer.contentRect);
             m_ColumnHeader.ResizeToFit();
             Root.Add(treeContainer);
         }
@@ -163,8 +164,7 @@ namespace AsmExplorer.Profiler {
             tmpHeatMap.Dispose();
 
             m_ExportCsvButton.SetEnabled(true);
-            m_HeatMapTree.SetData(m_Trace, m_HeatMap);
-            m_HeatMapTree.Reload();
+            m_HeatMapTreeView.SetData(ref m_Trace, ref m_HeatMap);
         }
 
         static MultiColumnHeaderState CreateHeaderState() => new MultiColumnHeaderState(new[]

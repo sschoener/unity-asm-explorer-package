@@ -1,12 +1,10 @@
-using System;
-using System.IO;
 using AsmExplorer.Profiler;
 using UnityEditor;
 using UnityEngine;
 
 namespace AsmExplorer
 {
-    public static class MenuItems {
+    static class MenuItems {
         [MenuItem("Window/Asm Explorer/Inspect")]
         public static void Inspect()
         {

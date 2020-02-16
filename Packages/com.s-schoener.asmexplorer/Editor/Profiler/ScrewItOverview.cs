@@ -5,7 +5,8 @@ using System.Linq;
 using UnityEditor.UIElements;
 using UnityEngine.UIElements;
 
-namespace AsmExplorer.Profiler {
+namespace AsmExplorer.Profiler
+{
     class ScrewItOverview : IScrewItView
     {
         readonly Label m_Info;

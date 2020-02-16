@@ -21,6 +21,7 @@ namespace AsmExplorer.Profiler {
         IScrewItView m_ActiveView;
         ScrewItHeatMapView m_HeatMapView;
         ScrewItOverview m_Overview;
+        ScrewItTopDownView m_TopDownView;
         List<IScrewItView> m_Views;
 
         void OnEnable()
@@ -28,9 +29,10 @@ namespace AsmExplorer.Profiler {
             titleContent = new GUIContent("Screw It! Profiler");
             m_HeatMapView = new ScrewItHeatMapView();
             m_Overview = new ScrewItOverview();
+            m_TopDownView = new ScrewItTopDownView();
 
             rootVisualElement.style.flexDirection = FlexDirection.Column;
-            m_Views = new List<IScrewItView> { m_Overview, m_HeatMapView };
+            m_Views = new List<IScrewItView> { m_Overview, m_HeatMapView, m_TopDownView };
 
             {
                 m_Toolbar = new Toolbar { style = { height = EditorGUIUtility.singleLineHeight } };

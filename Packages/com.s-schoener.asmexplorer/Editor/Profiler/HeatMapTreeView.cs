@@ -1,14 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using AsmExplorer.Profiler;
-using Microsoft.Diagnostics.Tracing.Parsers.AspNet;
-using Unity.Collections.LowLevel.Unsafe;
 using UnityEditor;
 using UnityEditor.IMGUI.Controls;
 using UnityEngine;
 
-namespace AsmExplorer {
+namespace AsmExplorer
+{
     class HeatMapTreeView : TreeView
     {
         FunctionHeatMap m_HeatMap;
@@ -24,13 +22,14 @@ namespace AsmExplorer {
             showAlternatingRowBackgrounds = true;
         }
 
-        public void SetData(ProfilerTrace trace, FunctionHeatMap heatMap)
+        public void SetData(ref ProfilerTrace trace, ref FunctionHeatMap heatMap)
         {
             m_Trace = trace;
             m_HeatMap = heatMap;
             m_Name = new string[trace.Functions.Length];
             m_NumSamples = new string[trace.Functions.Length];
             m_Module = new string[trace.Functions.Length];
+            Reload();
         }
 
         protected override TreeViewItem BuildRoot()
