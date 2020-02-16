@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using UnityEditor.IMGUI.Controls;
 using UnityEditor.UIElements;
@@ -56,7 +57,7 @@ namespace AsmExplorer.Profiler
         public void OnDisable() { }
         public void OnEnable() { }
 
-        void UpdateTree(int threadIndex)
+        unsafe void UpdateTree(int threadIndex)
         {
             if (m_TreeDataPerThread.Count <= threadIndex || !m_TreeDataPerThread[threadIndex].Frames.IsCreated)
             {
@@ -83,6 +84,13 @@ namespace AsmExplorer.Profiler
                 computeTreeJob.AllocateTreeIndex(Allocator.Persistent);
                 computeTreeJob.Run();
 
+                new SortTree<SortByTotal> {
+                    Sorter = new SortByTotal {
+                        Samples = (StackFrameSamples*)frames.GetUnsafeReadOnlyPtr(),
+                    },
+                    Tree = computeTreeJob.Indices
+                }.Schedule(computeTreeJob.Indices.DataIndexToChildren.Length, 32).Complete();
+
                 for (int i = m_TreeDataPerThread.Count; i <= threadIndex; i++)
                     m_TreeDataPerThread.Add(default);
                 m_TreeDataPerThread[threadIndex].Dispose();
@@ -101,6 +109,14 @@ namespace AsmExplorer.Profiler
         {
             public int GetDepth(ref StackFrameSamples data) => data.FrameData.Depth;
             public int GetParent(ref StackFrameSamples data) => data.FrameData.CallerStackFrame;
+        }
+
+        unsafe struct SortByTotal : IComparer<int>
+        {
+            [NativeDisableUnsafePtrRestriction]
+            public StackFrameSamples* Samples;
+
+            public int Compare(int x, int y) => Samples[y].NumSamplesTotal.CompareTo(Samples[x].NumSamplesTotal);
         }
 
         public void SetData(ref ProfilerTrace trace)
