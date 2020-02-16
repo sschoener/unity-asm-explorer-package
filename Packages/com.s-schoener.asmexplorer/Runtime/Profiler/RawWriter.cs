@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 
 namespace AsmExplorer.Profiler {
@@ -33,5 +34,7 @@ namespace AsmExplorer.Profiler {
         }
 
         public unsafe void Write<T>(T* data) where T : unmanaged => WriteBytes(data, sizeof(T));
+
+        public unsafe void WriteArray<T>(NativeArray<T> arr) where T : unmanaged => WriteBytes(arr.GetUnsafeReadOnlyPtr(), arr.Length * sizeof(T));
     }
 }

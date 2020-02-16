@@ -40,6 +40,49 @@ namespace AsmExplorer.Profiler
             }
         }
 
+        public static unsafe void WriteProfilerTrace(ref ProfilerTrace trace, Stream stream)
+        {
+            var writer = new RawWriter(stream);
+            var header = new ProfilerDataSerializationHeader
+            {
+                Version = 1,
+                NumFunctions = trace.Functions.Length,
+                NumModules = trace.Modules.Length,
+                NumSamples = trace.Samples.Length,
+                NumStackFrames = trace.StackFrames.Length,
+                NumThreads = trace.Threads.Length
+            };
+            long headerPos = stream.Position;
+
+            // we'll write the header again later
+            writer.Write(&header);
+
+            var profTrace = trace;
+            writer.Write(&profTrace.Header);
+
+            header.SamplesOffset = stream.Position - headerPos;
+            writer.WriteArray(profTrace.Samples);
+
+            header.StackFramesOffset = stream.Position - headerPos;
+            writer.WriteArray(profTrace.StackFrames);
+
+            header.FunctionsOffset = stream.Position - headerPos;
+            writer.WriteArray(profTrace.Functions);
+
+            header.ModulesOffset = stream.Position - headerPos;
+            writer.WriteArray(profTrace.Modules);
+
+            header.ThreadsOffset = stream.Position - headerPos;
+            writer.WriteArray(profTrace.Threads);
+
+            stream.Flush();
+            header.TotalLength = (int)(stream.Position - headerPos);
+            stream.Position = headerPos;
+            writer.Write(&header);
+
+            stream.Flush();
+        }
+
         static ProcessIndex FindUnityProcessIndex(TraceProcesses processes)
         {
             foreach (var process in processes)
@@ -124,47 +167,16 @@ namespace AsmExplorer.Profiler
             };
         }
 
-        public static unsafe void TranslateEtlFile(string etlPath, Stream stream)
+        static unsafe void ReadEtlFile(string etlPath, IEnumerable<string> pdbWhitelist, out ProfilerTrace profTrace, Allocator allocator)
         {
+
             var discoveredModules = DiscoveredData<DiscoveredModule>.Make(DiscoveredModule.Invalid);
             var discoveredStackFrames = DiscoveredData<CallStackIndex>.Make(CallStackIndex.Invalid);
             var discoveredFunctions = DiscoveredData<DiscoveredFunction>.Make(DiscoveredFunction.Invalid);
             var discoveredThreads = DiscoveredData<ThreadIndex>.Make(ThreadIndex.Invalid);
 
-            var writer = new RawWriter(stream);
-            var header = new ProfilerDataSerializationHeader
-            {
-                Version = 1,
-            };
-            long headerPos = stream.Position;
-            // we'll write the header again later
-            writer.WriteBytes(&header, sizeof(ProfilerDataSerializationHeader));
-
-            List<string> pdbWhitelist = new List<string>
-            {
-                "user32.dll",
-                "kernelbase.dll",
-                "wow64cpu.dll",
-                "ntdll.dll",
-                "unity.exe",
-                "mono-2.0-bdwgc.dll",
-                "d3d11.dll",
-                "msvcrt.dll",
-                "wow64.dll",
-                "win32u.dll",
-                "dxgi.dll",
-                "win32kfull.sys",
-                "kernel32.dll",
-                "ntoskrnl.exe",
-            };
-
-            //const string conv = "conversion.log";
-            //if (File.Exists(conv))
-            //    File.Delete(conv);
-            //var log = new StreamWriter(File.Open(conv, FileMode.Create, FileAccess.Write, FileShare.Read));
             var options = new TraceLogOptions()
             {
-                //ConversionLog = log,
                 AlwaysResolveSymbols = true,
                 LocalSymbolsOnly = false,
                 AllowUnsafeSymbols = true,
@@ -177,23 +189,23 @@ namespace AsmExplorer.Profiler
                     return pdbWhitelist.Any(x => path.EndsWith(x));
                 }
             };
+
+            profTrace = new ProfilerTrace();
             using (var trace = TraceLog.OpenOrConvert(etlPath, options))
             {
                 var processIndex = FindUnityProcessIndex(trace.Processes);
                 var processId = trace.Processes[processIndex].ProcessID;
 
-                var traceHeader = new ProfilerTraceHeader
+                profTrace.Header = new ProfilerTraceHeader
                 {
                     SamplingInterval = trace.SampleProfileInterval.TotalMilliseconds,
                     SessionStart = trace.SessionStartTime.Ticks,
                     SessionEnd = trace.SessionEndTime.Ticks,
                 };
-                writer.Write(&traceHeader);
 
+                using (var samples = new NativeList<SampleData>(Allocator.Temp))
                 {
-                    header.SamplesOffset = stream.Position - headerPos;
                     SampleData sampleData = default;
-                    int sampleCounter = 0;
                     foreach (var evt in trace.Events)
                     {
                         var sample = evt as SampledProfileTraceData;
@@ -205,17 +217,14 @@ namespace AsmExplorer.Profiler
                         sampleData.StackTrace = discoveredStackFrames.AddData(sample.CallStackIndex());
                         var codeAddress = sample.IntructionPointerCodeAddress();
                         sampleData.Function = GetFunctionIndex(codeAddress);
-                        writer.Write(&sampleData);
-                        sampleCounter++;
+                        samples.Add(sampleData);
                     }
-
-                    header.NumSamples = sampleCounter;
+                    profTrace.Samples = samples.ToArray(allocator);
                 }
 
+                using (var stackFrames = new NativeList<StackFrameData>(Allocator.Temp))
                 {
-                    header.StackFramesOffset = stream.Position - headerPos;
                     StackFrameData stackTraceData = default;
-
                     // N.B. this loop adds more stack frames as it executes
                     for (int idx = 0; idx < discoveredStackFrames.Count; idx++)
                     {
@@ -224,15 +233,13 @@ namespace AsmExplorer.Profiler
                         stackTraceData.Depth = stack.Depth;
                         stackTraceData.CallerStackFrame = discoveredStackFrames.AddData(stack.Caller?.CallStackIndex ?? CallStackIndex.Invalid);
                         stackTraceData.Function = GetFunctionIndex(stack.CodeAddress);
-
-                        writer.Write(&stackTraceData);
+                        stackFrames.Add(stackTraceData);
                     }
-
-                    header.NumStackFrames = discoveredStackFrames.Count;
+                    profTrace.StackFrames = stackFrames.ToArray(allocator);
                 }
 
+                using (var functions = new NativeList<FunctionData>(Allocator.Temp))
                 {
-                    header.FunctionsOffset = stream.Position - headerPos;
                     FunctionData funcData = default;
                     foreach (var func in discoveredFunctions.Data)
                     {
@@ -254,15 +261,13 @@ namespace AsmExplorer.Profiler
                             var fullName = MonoFunctionName(jitData.Method);
                             funcData.Name.CopyFrom(fullName);
                         }
-
-                        writer.Write(&funcData);
+                        functions.Add(funcData);
                     }
-
-                    header.NumFunctions = discoveredFunctions.Count;
+                    profTrace.Functions = functions.ToArray(allocator);
                 }
 
+                using (var modules = new NativeList<ModuleData>(Allocator.Temp))
                 {
-                    header.ModulesOffset = stream.Position - headerPos;
                     // make sure that all modules of the current process are included.
                     foreach (var module in trace.Processes[processIndex].LoadedModules)
                         discoveredModules.AddData(new DiscoveredModule { Index = module.ModuleFile.ModuleFileIndex });
@@ -290,34 +295,23 @@ namespace AsmExplorer.Profiler
                             fixed (byte* ptr = guidBytes)
                                 UnsafeUtility.MemCpy(moduleData.PdbGuid, ptr, 16);
                         }
-
-                        writer.Write(&moduleData);
+                        modules.Add(moduleData);
                     }
-                    header.NumModules = discoveredModules.Count + 1;
+                    profTrace.Modules = modules.ToArray(allocator);
                 }
 
+                using (var threads = new NativeList<ThreadData>(Allocator.Temp))
                 {
-                    header.ThreadsOffset = stream.Position - headerPos;
                     ThreadData threadData = default;
                     foreach (var t in discoveredThreads.Data)
                     {
                         var thread = trace.Threads[t];
                         threadData.ThreadName.CopyFrom(thread.ThreadInfo ?? "");
-                        writer.Write(&threadData);
+                        threads.Add(threadData);
                     }
-
-                    header.NumThreads = discoveredThreads.Count;
+                    profTrace.Threads = threads.ToArray(allocator);
                 }
-                stream.Flush();
-
-                header.TotalLength = (int)(stream.Position - headerPos);
-                stream.Position = headerPos;
-                writer.Write(&header);
-                stream.Flush();
             }
-
-            //log.Close();
-            //log.Dispose();
 
             int GetFunctionIndex(TraceCodeAddress address)
             {
@@ -346,6 +340,33 @@ namespace AsmExplorer.Profiler
                 var outerMost = method.DeclaringType.DeclaringType;
                 var outer = method.DeclaringType;
                 return outerMost.Namespace + '.' + outerMost.Name + '+' + outer.Name + '.' + method.Name;
+            }
+        }
+
+        public static unsafe void TranslateEtlFile(string etlPath, Stream stream)
+        {
+            List<string> pdbWhitelist = new List<string>
+            {
+                "user32.dll",
+                "kernelbase.dll",
+                "wow64cpu.dll",
+                "ntdll.dll",
+                "unity.exe",
+                "mono-2.0-bdwgc.dll",
+                "d3d11.dll",
+                "msvcrt.dll",
+                "wow64.dll",
+                "win32u.dll",
+                "dxgi.dll",
+                "win32kfull.sys",
+                "kernel32.dll",
+                "ntoskrnl.exe",
+            };
+
+            ReadEtlFile(etlPath, pdbWhitelist, out var profTrace, Allocator.Persistent);
+            using (profTrace)
+            {
+                WriteProfilerTrace(ref profTrace, stream);
             }
         }
     }
