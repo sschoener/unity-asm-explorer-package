@@ -376,7 +376,6 @@ namespace AsmExplorer.Profiler
                 profTrace.StackFrames = newStackFrames;
                 WriteProfilerTrace(ref profTrace, stream);
                 profTrace.StackFrames = tmp;
-                Debug.Log($"Merge {profTrace.StackFrames.Length} vs. {newStackFrames.Length}");
                 profTrace.Dispose();
             }
         }
