@@ -13,6 +13,13 @@ namespace AsmExplorer.Profiler
         public NativeArray<StackFrameData> StackFrames;
         public NativeArray<SampleData> Samples;
         public NativeList<StackFrameData> NewStackFrames;
+        public MergeMode MergeBy;
+
+        public enum MergeMode {
+            ByAddress,
+            ByFunction
+        }
+
         public unsafe void Execute()
         {
             if (StackFrames.Length == 0)
@@ -26,7 +33,7 @@ namespace AsmExplorer.Profiler
             {
                 ptr[i].Index = i;
                 ptr[i].Depth = frames[i].Depth;
-                ptr[i].Address = frames[i].Address;
+                ptr[i].Location = MergeBy == MergeMode.ByAddress ? frames[i].Address : frames[i].Function;
                 ptr[i].Caller = frames[i].CallerStackFrame;
             }
             NativeSortExtension.Sort(ptr, numStackFrames, new SortByDepth());
@@ -65,7 +72,7 @@ namespace AsmExplorer.Profiler
                 for (int i = startIndex + 1; i < currentIndex; i++) {
                     ref var fst = ref ptr[i - 1];
                     ref var snd = ref ptr[i];
-                    if (fst.Caller != snd.Caller || fst.Address != snd.Address) {
+                    if (fst.Caller != snd.Caller || fst.Location != snd.Location) {
                         var frame = frames[snd.Index];
                         frame.CallerStackFrame = snd.Caller;
                         NewStackFrames.Add(frame);
@@ -97,7 +104,7 @@ namespace AsmExplorer.Profiler
                     return -1;
                 if (x.Depth > y.Depth)
                     return 1;
-                return x.Address.CompareTo(y.Address);
+                return x.Location.CompareTo(y.Location);
             }
         }
 
@@ -108,7 +115,7 @@ namespace AsmExplorer.Profiler
                     return -1;
                 if (x.Caller > y.Caller)
                     return 1;
-                return x.Address.CompareTo(y.Address);
+                return x.Location.CompareTo(y.Location);
             }
         }
 
@@ -116,7 +123,7 @@ namespace AsmExplorer.Profiler
         {
             public int Index;
             public int Depth;
-            public long Address;
+            public long Location;
             public int Caller;
         }
     }

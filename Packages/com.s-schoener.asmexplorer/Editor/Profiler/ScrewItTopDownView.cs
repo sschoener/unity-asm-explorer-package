@@ -15,6 +15,8 @@ namespace AsmExplorer.Profiler
         readonly TopDownTreeView m_TreeView;
         readonly ToolbarMenu m_ThreadSelection;
         ProfilerTrace m_Trace;
+        NativeArray<SampleData> m_MergedSamples;
+        NativeList<StackFrameData> m_MergedStackFrames;
         readonly List<TopDownTreeData> m_TreeDataPerThread = new List<TopDownTreeData>();
         readonly List<VisualElement> m_ToolbarItems = new List<VisualElement>();
         readonly MultiColumnHeader m_ColumnHeader;
@@ -52,6 +54,10 @@ namespace AsmExplorer.Profiler
             for (int i = 0; i < m_TreeDataPerThread.Count; i++)
                 m_TreeDataPerThread[i].Dispose();
             m_TreeDataPerThread.Clear();
+            if (m_MergedStackFrames.IsCreated)
+                m_MergedStackFrames.Dispose();
+            if (m_MergedSamples.IsCreated)
+                m_MergedSamples.Dispose();
         }
 
         public void OnDisable() { }
@@ -59,13 +65,25 @@ namespace AsmExplorer.Profiler
 
         unsafe void UpdateTree(int threadIndex)
         {
+            if (!m_MergedStackFrames.IsCreated)
+            {
+                m_MergedSamples = new NativeArray<SampleData>(m_Trace.Samples, Allocator.Persistent);
+                m_MergedStackFrames = new NativeList<StackFrameData>(Allocator.Persistent);
+                new MergeCallStacksJob {
+                    MergeBy = MergeCallStacksJob.MergeMode.ByFunction,
+                    NewStackFrames = m_MergedStackFrames,
+                    Samples = m_MergedSamples,
+                    StackFrames = m_Trace.StackFrames
+                }.Run();
+            }
+
             if (m_TreeDataPerThread.Count <= threadIndex || !m_TreeDataPerThread[threadIndex].Frames.IsCreated)
             {
                 var threadCollection = new CollectThreadStackFrames
                 {
                     Thread = threadIndex,
-                    Samples = m_Trace.Samples,
-                    StackFrames = m_Trace.StackFrames,
+                    Samples = m_MergedSamples,
+                    StackFrames = m_MergedStackFrames,
                     FramesInThread = new NativeList<StackFrameSamples>(Allocator.TempJob),
                     SamplesInThread = new NativeList<SampleData>(Allocator.TempJob)
                 };
@@ -84,8 +102,10 @@ namespace AsmExplorer.Profiler
                 computeTreeJob.AllocateTreeIndex(Allocator.Persistent);
                 computeTreeJob.Run();
 
-                new SortTree<SortByTotal> {
-                    Sorter = new SortByTotal {
+                new SortTree<SortByTotal>
+                {
+                    Sorter = new SortByTotal
+                    {
                         Samples = (StackFrameSamples*)frames.GetUnsafeReadOnlyPtr(),
                     },
                     Tree = computeTreeJob.Indices
