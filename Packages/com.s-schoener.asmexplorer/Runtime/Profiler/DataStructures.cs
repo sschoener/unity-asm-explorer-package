@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using Unity.Collections;
 
 namespace AsmExplorer.Profiler
@@ -68,12 +69,15 @@ namespace AsmExplorer.Profiler
             StackTrace  == other.StackTrace && Function == other.Function && Address == other.Address && TimeStamp == other.TimeStamp && ThreadIdx == other.ThreadIdx;
     }
 
+    [DebuggerDisplay("Address = {Address}, Function = {Function}, CallerStackFrame = {CallerStackFrame}, Depth = {Depth}")]
     struct StackFrameData : IEquatable<StackFrameData>
     {
         public long Address;
         public int Function;
         public int CallerStackFrame;
         public int Depth;
+
+        public override string ToString() => $"Address = {Address}, Function = {Function}, CallerStackFrame = {CallerStackFrame}, Depth = {Depth}";
 
         public bool Equals(StackFrameData other) =>
             Address == other.Address && Function == other.Function && CallerStackFrame == other.CallerStackFrame && Depth == other.Depth;

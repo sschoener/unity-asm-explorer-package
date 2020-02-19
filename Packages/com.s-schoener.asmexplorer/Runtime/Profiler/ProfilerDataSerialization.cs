@@ -7,6 +7,7 @@ using Microsoft.Diagnostics.Tracing.Etlx;
 using Microsoft.Diagnostics.Tracing.Parsers.Kernel;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
+using Unity.Jobs;
 using UnityEditor;
 using Debug = UnityEngine.Debug;
 
@@ -169,7 +170,6 @@ namespace AsmExplorer.Profiler
 
         static unsafe void ReadEtlFile(string etlPath, IEnumerable<string> pdbWhitelist, out ProfilerTrace profTrace, Allocator allocator)
         {
-
             var discoveredModules = DiscoveredData<DiscoveredModule>.Make(DiscoveredModule.Invalid);
             var discoveredStackFrames = DiscoveredData<CallStackIndex>.Make(CallStackIndex.Invalid);
             var discoveredFunctions = DiscoveredData<DiscoveredFunction>.Make(DiscoveredFunction.Invalid);
@@ -364,9 +364,20 @@ namespace AsmExplorer.Profiler
             };
 
             ReadEtlFile(etlPath, pdbWhitelist, out var profTrace, Allocator.Persistent);
-            using (profTrace)
+            using (var newStackFrames = new NativeList<StackFrameData>(Allocator.TempJob))
             {
+                new MergeCallStacksJob
+                {
+                    NewStackFrames = newStackFrames,
+                    Samples = profTrace.Samples,
+                    StackFrames = profTrace.StackFrames
+                }.Run();
+                var tmp = profTrace.StackFrames;
+                profTrace.StackFrames = newStackFrames;
                 WriteProfilerTrace(ref profTrace, stream);
+                profTrace.StackFrames = tmp;
+                Debug.Log($"Merge {profTrace.StackFrames.Length} vs. {newStackFrames.Length}");
+                profTrace.Dispose();
             }
         }
     }
