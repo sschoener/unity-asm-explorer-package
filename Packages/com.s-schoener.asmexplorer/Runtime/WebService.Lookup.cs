@@ -26,7 +26,7 @@ namespace AsmExplorer
 
             NameValueCollection postValues;
             using (StreamReader reader = new StreamReader(request.InputStream, request.ContentEncoding))
-                postValues = HttpUtility.ParseQueryString(reader.ReadToEnd());
+                postValues = System.Web.HttpUtility.ParseQueryString(reader.ReadToEnd());
             if (postValues[addresses] != null)
             {
                 var modules = Process.GetCurrentProcess().Modules;
