@@ -47,6 +47,11 @@ namespace AsmExplorer
             Reload();
         }
 
+        public void ClearData() {
+            m_Trace = default;
+            m_TreeData = default;
+        }
+
         protected override TreeViewItem BuildRoot()
         {
             return new TreeViewItem

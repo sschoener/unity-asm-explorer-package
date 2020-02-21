@@ -116,13 +116,13 @@ namespace AsmExplorer.Profiler
                 return idx;
             }
 
-            public static DiscoveredData<T> Make(T invalid)
+            public static DiscoveredData<T> Make(T invalid, IEqualityComparer<T> eq=null)
             {
                 return new DiscoveredData<T>()
                 {
                     Invalid = invalid,
                     Data = new List<T>(),
-                    Indices = new Dictionary<T, int>()
+                    Indices = eq == null ? new Dictionary<T, int>() : new Dictionary<T, int>(eq)
                 };
             }
         }
@@ -170,6 +170,7 @@ namespace AsmExplorer.Profiler
 
         static unsafe void ReadEtlFile(string etlPath, IEnumerable<string> pdbWhitelist, out ProfilerTrace profTrace, Allocator allocator)
         {
+            var monoFunctions = new Dictionary<IntPtr, MonoJitInfo>();
             var discoveredModules = DiscoveredData<DiscoveredModule>.Make(DiscoveredModule.Invalid);
             var discoveredStackFrames = DiscoveredData<CallStackIndex>.Make(CallStackIndex.Invalid);
             var discoveredFunctions = DiscoveredData<DiscoveredFunction>.Make(DiscoveredFunction.Invalid);
@@ -321,7 +322,11 @@ namespace AsmExplorer.Profiler
                     var jit = Mono.GetJitInfoAnyDomain(new IntPtr((long)address.Address), out _);
                     if (jit.Method == null)
                         return -1;
-                    return discoveredFunctions.AddData(DiscoveredFunction.FromMethod(jit));
+                    if (!monoFunctions.TryGetValue(jit.CodeStart, out var actualJit)) {
+                        monoFunctions.Add(jit.CodeStart, jit);
+                        actualJit = jit;
+                    }
+                    return discoveredFunctions.AddData(DiscoveredFunction.FromMethod(actualJit));
                 }
                 return discoveredFunctions.AddData(new DiscoveredFunction
                 {

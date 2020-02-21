@@ -58,6 +58,9 @@ namespace AsmExplorer.Profiler
                 m_MergedStackFrames.Dispose();
             if (m_MergedSamples.IsCreated)
                 m_MergedSamples.Dispose();
+            m_TreeView.ClearData();
+            m_TreeView.CollapseAll();
+            m_TreeView.Reload();
         }
 
         public void OnDisable() { }
@@ -188,16 +191,16 @@ namespace AsmExplorer.Profiler
             new MultiColumnHeaderState.Column
             {
                 headerContent = new GUIContent("Total"),
-                width = 50,
-                minWidth = 50,
-                maxWidth = 50,
+                width = 70,
+                minWidth = 70,
+                maxWidth = 70,
             },
             new MultiColumnHeaderState.Column
             {
                 headerContent = new GUIContent("Self"),
-                width = 50,
-                minWidth = 50,
-                maxWidth = 50,
+                width = 70,
+                minWidth = 70,
+                maxWidth = 70,
             },
         });
     }
