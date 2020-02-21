@@ -1,0 +1,8 @@
+[AlwaysUpdateSystem]
+class HarmlessSystem_{n} : SystemBase
+{
+    protected override void OnUpdate()
+    {
+        Entities.ForEach((ref Translation t) => { t.Value += new float3(1);}).ScheduleParallel();
+    }
+}
