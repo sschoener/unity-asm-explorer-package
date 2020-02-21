@@ -14,6 +14,7 @@ namespace AsmExplorer
         string[] m_Name;
         string[] m_NumSamples;
         string[] m_Module;
+        string[] m_Addresses;
         GUIStyle m_RightAlignedLabelStyle;
 
         public HeatMapTreeView(TreeViewState state, MultiColumnHeader multiColumnHeader)
@@ -29,6 +30,7 @@ namespace AsmExplorer
             m_Name = new string[trace.Functions.Length];
             m_NumSamples = new string[trace.Functions.Length];
             m_Module = new string[trace.Functions.Length];
+            m_Addresses = new string[trace.Functions.Length];
             Reload();
         }
 
@@ -78,12 +80,8 @@ namespace AsmExplorer
                             m_Name[idx] = m_Trace.Functions[funcIndex].Name.ToString();
                     }
                     EditorGUI.LabelField(rect, m_Name[idx]);
-                } else if (col == 1)
-                {
-                    if (m_NumSamples[idx] == null)
-                        m_NumSamples[idx] = m_HeatMap.SamplesPerFunction[idx].Samples.ToString();
-                    EditorGUI.LabelField(rect, m_NumSamples[idx], m_RightAlignedLabelStyle);
-                } else if (col == 2)
+                }
+                else if (col == 1)
                 {
                     if (m_Module[idx] == null)
                     {
@@ -106,6 +104,20 @@ namespace AsmExplorer
                         }
                     }
                     EditorGUI.LabelField(rect, m_Module[idx]);
+                }
+                else if (col == 2)
+                {
+                            if (m_Addresses[idx] == null) {
+                                var funcIndex = m_HeatMap.SamplesPerFunction[idx].Function;
+                                m_Addresses[idx] = funcIndex < 0 ? "???" : m_Trace.Functions[funcIndex].BaseAddress.ToString("X16");
+                            }
+                            EditorGUI.LabelField(rect, m_Addresses[idx]);
+                }
+                else if (col == 3)
+                {
+                    if (m_NumSamples[idx] == null)
+                        m_NumSamples[idx] = m_HeatMap.SamplesPerFunction[idx].Samples.ToString();
+                    EditorGUI.LabelField(rect, m_NumSamples[idx], m_RightAlignedLabelStyle);
                 }
             }
         }

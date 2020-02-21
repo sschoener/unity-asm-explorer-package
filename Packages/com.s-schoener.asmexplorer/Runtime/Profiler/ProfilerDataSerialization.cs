@@ -247,7 +247,10 @@ namespace AsmExplorer.Profiler
                         if (func.Index != MethodIndex.Invalid)
                         {
                             var method = trace.CodeAddresses.Methods[func.Index];
-                            funcData.BaseAddress = method.MethodRva;
+                            if (method.MethodRva > 0 && method.MethodModuleFile != null) {
+                                funcData.BaseAddress = method.MethodModuleFile.ImageBase + (ulong)method.MethodRva;
+                            } else
+                                funcData.BaseAddress = 0;
                             funcData.Length = -1;
                             funcData.Module = discoveredModules.AddData(DiscoveredModule.FromIndex(method.MethodModuleFileIndex));
                             funcData.Name.CopyFrom(method.FullMethodName);
@@ -255,7 +258,7 @@ namespace AsmExplorer.Profiler
                         else
                         {
                             var jitData = func.MonoMethod;
-                            funcData.BaseAddress = jitData.CodeStart.ToInt64();
+                            funcData.BaseAddress = (ulong)jitData.CodeStart.ToInt64();
                             funcData.Length = jitData.CodeSize;
                             funcData.Module = discoveredModules.AddData(DiscoveredModule.FromMonoModule(jitData.Method.Module));
 

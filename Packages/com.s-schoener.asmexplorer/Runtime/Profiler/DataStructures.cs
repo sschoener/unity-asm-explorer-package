@@ -100,7 +100,7 @@ namespace AsmExplorer.Profiler
         public int Module;
         public NativeString512 Name;
 
-        public long BaseAddress;
+        public ulong BaseAddress;
         public int Length;
     }
 }

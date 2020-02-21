@@ -176,15 +176,22 @@ namespace AsmExplorer.Profiler
             },
             new MultiColumnHeaderState.Column
             {
+                headerContent = new GUIContent("Module"),
+                width = 100,
+                minWidth = 100
+            },
+            new MultiColumnHeaderState.Column{
+                headerContent = new GUIContent("Address"),
+                width = 140,
+                minWidth = 140,
+                maxWidth = 140,
+            },
+            new MultiColumnHeaderState.Column
+            {
                 headerContent = new GUIContent("Total samples"),
                 width = 100,
                 minWidth = 100,
                 maxWidth = 100,
-            },
-            new MultiColumnHeaderState.Column
-            {
-                headerContent = new GUIContent("Module"),
-                width = 400
             }
         });
     }
