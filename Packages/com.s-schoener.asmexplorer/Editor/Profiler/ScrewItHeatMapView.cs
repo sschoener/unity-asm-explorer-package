@@ -18,6 +18,8 @@ namespace AsmExplorer.Profiler
         FunctionHeatMap m_HeatMap;
         ProfilerTrace m_Trace;
         ToolbarButton m_ExportCsvButton;
+        ToolbarToggle m_FilterKernelCode;
+        int m_CurrentThread;
         bool m_HasData;
         readonly List<VisualElement> m_ToolbarItems = new List<VisualElement>();
         readonly MultiColumnHeader m_ColumnHeader;
@@ -30,10 +32,18 @@ namespace AsmExplorer.Profiler
             m_ThreadSelection.text = "Select Thread";
             m_ToolbarItems.Add(m_ThreadSelection);
 
+            m_FilterKernelCode = new ToolbarToggle
+            {
+                text = "Reattribute Kernel Samples",
+                tooltip = "When active, all samples that are not from unity.exe or from a managed module will be attributed to the first function up the callstack that is from unity.exe or managed."
+            };
+            m_FilterKernelCode.RegisterValueChangedCallback(_ => RefreshHeatMap());
+            m_ToolbarItems.Add(m_FilterKernelCode);
+
             m_ExportCsvButton = new ToolbarButton
             {
                 text = "Export CSV",
-                style = { unityTextAlign = TextAnchor.MiddleLeft }
+                style = { unityTextAlign = TextAnchor.MiddleLeft },
             };
             m_ExportCsvButton.SetEnabled(false);
             m_ExportCsvButton.clicked += ExportCsvButton;
@@ -99,6 +109,7 @@ namespace AsmExplorer.Profiler
 
             m_ThreadSelection.menu.MenuItems().Clear();
             m_ThreadSelection.SetEnabled(true);
+            m_CurrentThread = -1;
 
             for (int i = 0; i < m_Trace.Threads.Length; i++)
             {
@@ -112,7 +123,8 @@ namespace AsmExplorer.Profiler
                 m_ThreadSelection.menu.AppendAction(threadName, action =>
                 {
                     m_ThreadSelection.text = action.name;
-                    UpdateHeatMap(index);
+                    m_CurrentThread = index;
+                    RefreshHeatMap();
                 });
             }
 
@@ -128,6 +140,7 @@ namespace AsmExplorer.Profiler
                 m_Trace = default;
                 m_ExportCsvButton.SetEnabled(false);
                 m_ThreadSelection.SetEnabled(false);
+                m_HeatMapTreeView.Reload();
             }
         }
 
@@ -138,33 +151,61 @@ namespace AsmExplorer.Profiler
         {
             public NativeList<FunctionHeatMap.Entry> HeatMap;
             [ReadOnly]
-            public ProfilerTrace Trace;
+            public NativeArray<SampleData> Samples;
             public int ThreadIndex;
 
             public void Execute()
             {
-                FunctionHeatMap.BuildFromTrace(HeatMap, ref Trace, ThreadIndex);
+                FunctionHeatMap.BuildFromTrace(HeatMap, Samples, ThreadIndex);
             }
         }
 
-        void UpdateHeatMap(int threadIndex)
+        void UpdateHeatMap(int threadIndex, bool filterKernelModules)
         {
             if (m_HasData)
                 m_HeatMap.Dispose();
-            var tmpHeatMap = new NativeList<FunctionHeatMap.Entry>(Allocator.TempJob);
-            var job = new HeatMapJob
-            {
-                Trace = m_Trace,
-                ThreadIndex = threadIndex,
-                HeatMap = tmpHeatMap
-            };
-            job.Run();
-            m_HeatMap.SamplesPerFunction = tmpHeatMap.ToArray(Allocator.Persistent);
-            m_HasData = true;
-            tmpHeatMap.Dispose();
 
+            NativeArray<SampleData> samples;
+            if (filterKernelModules)
+            {
+                samples = new NativeArray<SampleData>(m_Trace.Samples, Allocator.TempJob);
+                new FilterKernelModulesJob
+                {
+                    Functions = m_Trace.Functions,
+                    Modules = m_Trace.Modules,
+                    Samples = samples,
+                    StackFrames = m_Trace.StackFrames
+                }.Run();
+            }
+            else
+                samples = m_Trace.Samples;
+
+            using (var tmpHeatMap = new NativeList<FunctionHeatMap.Entry>(Allocator.TempJob))
+            {
+                var job = new HeatMapJob
+                {
+                    Samples = samples,
+                    ThreadIndex = threadIndex,
+                    HeatMap = tmpHeatMap
+                };
+                job.Run();
+                m_HeatMap.SamplesPerFunction = tmpHeatMap.ToArray(Allocator.Persistent);
+            }
+
+            if (filterKernelModules)
+                samples.Dispose();
+
+            m_HasData = true;
             m_ExportCsvButton.SetEnabled(true);
             m_HeatMapTreeView.SetData(ref m_Trace, ref m_HeatMap);
+        }
+
+
+        void RefreshHeatMap()
+        {
+            if (m_CurrentThread < 0)
+                return;
+            UpdateHeatMap(m_CurrentThread, m_FilterKernelCode.value);
         }
 
         static MultiColumnHeaderState CreateHeaderState() => new MultiColumnHeaderState(new[]

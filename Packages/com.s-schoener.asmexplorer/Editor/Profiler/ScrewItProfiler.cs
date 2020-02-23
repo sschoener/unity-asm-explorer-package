@@ -36,8 +36,7 @@ namespace AsmExplorer.Profiler {
 
             {
                 m_Toolbar = new Toolbar { style = { height = EditorGUIUtility.singleLineHeight } };
-                m_RecordingToggle = new ToolbarToggle();
-                m_RecordingToggle.text = "Start Recording";
+                m_RecordingToggle = new ToolbarToggle { text = "Start Recording" };
                 m_RecordingToggle.RegisterValueChangedCallback(OnRecordingToggled);
                 m_Toolbar.Add(m_RecordingToggle);
 
