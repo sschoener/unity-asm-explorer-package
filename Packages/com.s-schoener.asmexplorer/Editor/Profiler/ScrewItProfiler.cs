@@ -113,6 +113,14 @@ namespace AsmExplorer.Profiler {
                 m_ViewSelection.text = "Select view";
         }
 
+        static string s_DefaultPath = Path.Combine(Application.dataPath, "Traces");
+        const string k_TracePathPref = "ScrewIt.TracePath";
+        static string LastTraceFolder
+        {
+            get => EditorPrefs.GetString(k_TracePathPref, s_DefaultPath);
+            set => EditorPrefs.SetString(k_TracePathPref, value);
+        }
+
         void OnRecordingToggled(ChangeEvent<bool> evt)
         {
             if (ProfilerSessionInstance.SessionActive)
@@ -123,9 +131,12 @@ namespace AsmExplorer.Profiler {
             }
             else
             {
-                string file = EditorUtility.SaveFilePanel("Select trace path", Application.dataPath, "ProfileTrace", "ptrace");
+                string file = EditorUtility.SaveFilePanel("Select trace path", LastTraceFolder, "ProfileTrace", "ptrace");
                 if (string.IsNullOrEmpty(file))
                     return;
+                var dir = Path.GetDirectoryName(file);
+                if (Directory.Exists(dir))
+                    LastTraceFolder = dir;
                 ProfilerSessionInstance.SetupSession(file);
             }
 
@@ -137,9 +148,10 @@ namespace AsmExplorer.Profiler {
         static readonly string[] k_ProfileFileFilter = { "Profiler Traces", "ptrace" };
         void ShowLoadTraceFileDialog()
         {
-            string file = EditorUtility.OpenFilePanelWithFilters("Select trace", Application.dataPath, k_ProfileFileFilter);
+            string file = EditorUtility.OpenFilePanelWithFilters("Select trace", LastTraceFolder, k_ProfileFileFilter);
             if (string.IsNullOrEmpty(file) || !File.Exists(file))
                 return;
+            LastTraceFolder = Path.GetDirectoryName(file);
             LoadTraceFile(file);
         }
 
