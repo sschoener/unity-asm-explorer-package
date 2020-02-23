@@ -54,7 +54,7 @@ namespace AsmExplorer.Profiler
 
     unsafe struct ThreadData
     {
-        public NativeString64 ThreadName;
+        public FixedString64 ThreadName;
     }
 
     struct SampleData : IEquatable<SampleData>
@@ -85,8 +85,8 @@ namespace AsmExplorer.Profiler
 
     unsafe struct ModuleData
     {
-        public NativeString512 FilePath;
-        public NativeString64 PdbName;
+        public FixedString512 FilePath;
+        public FixedString64 PdbName;
         public ulong ImageBase;
         public ulong ImageEnd;
         public fixed byte PdbGuid[16];
@@ -98,7 +98,7 @@ namespace AsmExplorer.Profiler
     unsafe struct FunctionData
     {
         public int Module;
-        public NativeString512 Name;
+        public FixedString512 Name;
 
         public ulong BaseAddress;
         public int Length;

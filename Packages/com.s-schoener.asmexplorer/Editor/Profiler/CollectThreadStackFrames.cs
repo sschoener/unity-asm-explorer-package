@@ -61,7 +61,7 @@ namespace AsmExplorer.Profiler
                     }
                 }
 
-                // sort all frames by their depth
+                // sort all frames by their depth so that the lowest depth stack frames are at the beginning
                 NativeSortExtension.Sort((FrameSortData*)collectedFrames.GetUnsafePtr(), collectedFrames.Length, new FrameComp());
 
                 // map old indices to new indices

@@ -22,6 +22,7 @@ namespace AsmExplorer.Profiler {
         ScrewItHeatMapView m_HeatMapView;
         ScrewItOverview m_Overview;
         ScrewItTopDownView m_TopDownView;
+        ScrewItHotSubtreeView m_HotSubtreeView;
         List<IScrewItView> m_Views;
 
         void OnEnable()
@@ -30,9 +31,10 @@ namespace AsmExplorer.Profiler {
             m_HeatMapView = new ScrewItHeatMapView();
             m_Overview = new ScrewItOverview();
             m_TopDownView = new ScrewItTopDownView();
+            m_HotSubtreeView = new ScrewItHotSubtreeView();
 
             rootVisualElement.style.flexDirection = FlexDirection.Column;
-            m_Views = new List<IScrewItView> { m_Overview, m_HeatMapView, m_TopDownView };
+            m_Views = new List<IScrewItView> { m_Overview, m_HeatMapView, m_TopDownView, m_HotSubtreeView };
 
             {
                 m_Toolbar = new Toolbar { style = { height = EditorGUIUtility.singleLineHeight } };

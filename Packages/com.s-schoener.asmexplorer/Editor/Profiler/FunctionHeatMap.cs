@@ -2,7 +2,6 @@
 using AsmExplorer.Profiler;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
-using Unity.Jobs;
 
 namespace AsmExplorer {
     struct FunctionHeatMap : IDisposable
