@@ -113,11 +113,20 @@ namespace AsmExplorer.Profiler {
                 m_ViewSelection.text = "Select view";
         }
 
-        static string s_DefaultPath = Path.Combine(Application.dataPath, "Traces");
+        static string DefaultTracePath
+        {
+            get
+            {
+                var path = Path.Combine(ScrewItConfig.BasePath, "Traces");
+                if (!Directory.Exists(path))
+                    Directory.CreateDirectory(path);
+                return path;
+            }
+        }
         const string k_TracePathPref = "ScrewIt.TracePath";
         static string LastTraceFolder
         {
-            get => EditorPrefs.GetString(k_TracePathPref, s_DefaultPath);
+            get => EditorPrefs.GetString(k_TracePathPref, DefaultTracePath);
             set => EditorPrefs.SetString(k_TracePathPref, value);
         }
 
