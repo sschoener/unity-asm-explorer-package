@@ -11,6 +11,15 @@ using UnityEngine.UIElements;
 
 namespace AsmExplorer.Profiler
 {
+    /// <summary>
+    /// Zoom in on a hot subtree.
+    /// The idea behind this view is that you have found a subtree that contains a lot of the samples, but you do not
+    /// know how they are distributed in this subtree. The problem in this situation is that multiple functions in the
+    /// hot subtree might be slow for the same reason: They all call a third function that is the actual problem.
+    /// The hot subtree view takes all samples whose stack trace contain a specific function (this determines the hot
+    /// subtree) and aggregates them by function, both self and total. This allows you to get a better idea how big the
+    /// contribution of a function is in that subtree.
+    /// </summary>
     class ScrewItHotSubtreeView : IScrewItView
     {
         readonly HotSubtreeTreeView m_SubtreeTreeView;
