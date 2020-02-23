@@ -382,7 +382,7 @@ namespace AsmExplorer
             StartNote(writer, ref context);
             if (callTarget != 0)
             {
-                var target = Mono.GetJitInfo((IntPtr)callTarget);
+                var target = Mono.GetJitInfoAnyDomain((IntPtr)callTarget, out _);
                 if (target.Method != null)
                 {
                     if (target.Method.IsConstructor)
