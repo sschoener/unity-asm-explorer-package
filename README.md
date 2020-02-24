@@ -43,5 +43,8 @@ Once it's done, the trace should be automatically loaded. Use the dropdown in th
  * Top-Down View: A top down view of the samples in the trace with their callstacks
  * Hot Subtree view: Enter a search string for a function in the top-right and click update. You will see all samples whose stack trace includes any function that contains the search string, split up by function. This is helpful when you know that a subtree is problematic, but it is very branchy and you just want to split the samples by function and ignore the tree-structure.
 
-## License
+## Known issues
+ * Sometimes unrelated kernel callstacks appear below certain functions, but it's only for relatively few samples
+
+# License
 The code is licensed under a MIT license and is using SharpDisasm under the Simplified BSD license.
