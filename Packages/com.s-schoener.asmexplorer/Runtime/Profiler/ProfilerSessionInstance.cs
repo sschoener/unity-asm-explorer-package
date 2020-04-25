@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using UnityEngine;
 using Debug = UnityEngine.Debug;
 
 namespace AsmExplorer.Profiler
@@ -51,7 +52,7 @@ namespace AsmExplorer.Profiler
         [RuntimeInitializeOnLoadMethod]
         static void InstallStopHandler()
         {
-            Application.quitting += StopSession;
+            Application.quitting += () => StopSession(true);
         }
 #endif
 

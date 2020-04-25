@@ -181,6 +181,10 @@ namespace AsmExplorer.Profiler
 #if UNITY_EDITOR
             additionalSymbolPath = Path.GetDirectoryName(EditorApplication.applicationPath);
             additionalSymbolPath += ";" + BurstPath;
+#else
+            // find burst path
+            additionalSymbolPath = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+            additionalSymbolPath = Path.Combine(Application.dataPath, "Plugins");
 #endif
 
             var options = new TraceLogOptions()
@@ -372,6 +376,7 @@ namespace AsmExplorer.Profiler
             "win32kfull.sys",
             "kernel32.dll",
             "ntoskrnl.exe",
+            "lib_burst_generated.dll"
         };
 
         private const string RelativeBurstPath = "../Library/BurstCache/JIT";
