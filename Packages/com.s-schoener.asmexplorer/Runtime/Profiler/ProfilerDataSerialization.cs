@@ -9,6 +9,7 @@ using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using UnityEditor;
+using UnityEngine;
 using Debug = UnityEngine.Debug;
 
 namespace AsmExplorer.Profiler
@@ -176,14 +177,18 @@ namespace AsmExplorer.Profiler
             var discoveredFunctions = DiscoveredData<DiscoveredFunction>.Make(DiscoveredFunction.Invalid);
             var discoveredThreads = DiscoveredData<ThreadIndex>.Make(ThreadIndex.Invalid);
 
+            string additionalSymbolPath = "";
+#if UNITY_EDITOR
+            additionalSymbolPath = Path.GetDirectoryName(EditorApplication.applicationPath);
+            additionalSymbolPath += ";" + BurstPath;
+#endif
+
             var options = new TraceLogOptions()
             {
                 AlwaysResolveSymbols = true,
                 LocalSymbolsOnly = false,
                 AllowUnsafeSymbols = true,
-#if UNITY_EDITOR
-                AdditionalSymbolPath = Path.GetDirectoryName(EditorApplication.applicationPath),
-#endif
+                AdditionalSymbolPath = additionalSymbolPath,
                 ShouldResolveSymbols = path =>
                 {
                     path = path.ToLowerInvariant();
@@ -351,25 +356,35 @@ namespace AsmExplorer.Profiler
             }
         }
 
-        public static unsafe void TranslateEtlFile(string etlPath, Stream stream)
+        private static readonly string[] pdbWhiteList =
         {
-            List<string> pdbWhitelist = new List<string>
-            {
-                "user32.dll",
-                "kernelbase.dll",
-                "wow64cpu.dll",
-                "ntdll.dll",
-                "unity.exe",
-                "mono-2.0-bdwgc.dll",
-                "d3d11.dll",
-                "msvcrt.dll",
-                "wow64.dll",
-                "win32u.dll",
-                "dxgi.dll",
-                "win32kfull.sys",
-                "kernel32.dll",
-                "ntoskrnl.exe",
-            };
+            "user32.dll",
+            "kernelbase.dll",
+            "wow64cpu.dll",
+            "ntdll.dll",
+            "unity.exe",
+            "mono-2.0-bdwgc.dll",
+            "d3d11.dll",
+            "msvcrt.dll",
+            "wow64.dll",
+            "win32u.dll",
+            "dxgi.dll",
+            "win32kfull.sys",
+            "kernel32.dll",
+            "ntoskrnl.exe",
+        };
+
+        private const string RelativeBurstPath = "../Library/BurstCache/JIT";
+        static string BurstPath => Path.GetFullPath(Path.Combine(Application.dataPath, RelativeBurstPath));
+
+        public static void TranslateEtlFile(string etlPath, Stream stream)
+        {
+            List<string> pdbWhitelist = new List<string>(pdbWhiteList);
+
+            #if UNITY_EDITOR
+            var burstDlls = Directory.EnumerateFiles(BurstPath).Where(f => f.EndsWith(".dll")).Select(Path.GetFileName);
+            pdbWhitelist.AddRange(burstDlls);
+            #endif
 
             ReadEtlFile(etlPath, pdbWhitelist, out var profTrace, Allocator.Persistent);
             using (var newStackFrames = new NativeList<StackFrameData>(Allocator.TempJob))
