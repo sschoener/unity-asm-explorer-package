@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using AsmExplorer.Profiler;
+using Unity.Collections;
 using UnityEditor;
 using UnityEditor.IMGUI.Controls;
 using UnityEngine;
@@ -125,6 +126,9 @@ namespace AsmExplorer
             };
         }
 
+        private static readonly FixedString32 BurstCacheDir = "burstcache";
+        private static readonly FixedString32 BurstLib = "lib_burst_generated.dll";
+
         protected override void RowGUI(RowGUIArgs args)
         {
             InitStyles();
@@ -170,6 +174,8 @@ namespace AsmExplorer
                                         string name = Path.GetFileName(module.FilePath.ToString());
                                         if (module.IsMono)
                                             name += " (managed)";
+                                        if (module.FilePath.Contains(BurstCacheDir) || module.FilePath.LastIndexOf(BurstLib) != -1)
+                                            name += " (Burst)";
                                         m_Module[idx] = name;
                                     }
                                 }
