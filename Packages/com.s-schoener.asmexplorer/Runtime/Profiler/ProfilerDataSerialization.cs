@@ -224,6 +224,7 @@ namespace AsmExplorer.Profiler
                         var sample = evt as SampledProfileTraceData;
                         if (sample == null || sample.ProcessID != processId || sample.NonProcess)
                             continue;
+                        // TODO sample has a count field that we are currently ignoring. should we?
                         sampleData.Address = (long)sample.InstructionPointer;
                         sampleData.ThreadIdx = discoveredThreads.AddData(sample.Thread()?.ThreadIndex ?? ThreadIndex.Invalid);
                         sampleData.TimeStamp = sample.TimeStampRelativeMSec;

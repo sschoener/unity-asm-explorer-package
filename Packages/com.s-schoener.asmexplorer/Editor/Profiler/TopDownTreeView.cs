@@ -53,6 +53,31 @@ namespace AsmExplorer
             m_TreeData = default;
         }
 
+        protected override void ContextClickedItem(int id)
+        {
+            base.ContextClickedItem(id);
+            Event.current.Use();
+            GenericMenu pm = new GenericMenu();
+            var frame = m_TreeData.Frames[id];
+            int function = frame.FrameData.Function;
+            if (function >= 0)
+            {
+                pm.AddItem(EditorGUIUtility.TrTextContent("Dump samples"), false, () =>
+                {
+                    int blobLength = m_Trace.Functions[function].Length;
+                    int blobOffset = m_Trace.Functions[function].CodeBlobOffset;
+                    var baseAddress = m_Trace.Functions[function].BaseAddress;
+                    var sampleSlice = m_TreeData.Samples.Slice(frame.SamplesOffset, frame.NumSamplesSelf);
+                    var lines = ProfilerDisassembler.FormatInstructions(baseAddress, m_Trace.BlobData, blobOffset, blobLength, sampleSlice);
+                    lines.Insert(0, m_Trace.Functions[function].Name.ToString());
+                    File.WriteAllLines("test.log", lines);
+                });
+            }
+            else
+                pm.AddDisabledItem(EditorGUIUtility.TrTextContent("No code loaded"));
+            pm.ShowAsContext();
+        }
+
         protected override TreeViewItem BuildRoot()
         {
             return new TreeViewItem
