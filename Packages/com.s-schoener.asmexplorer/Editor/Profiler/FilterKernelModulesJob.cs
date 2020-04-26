@@ -17,9 +17,13 @@ namespace AsmExplorer {
 
         public unsafe void Run()
         {
+            var burstString = new FixedString32("burst");
             var isKernelModule = new NativeArray<bool>(Modules.Length, Allocator.TempJob);
             for (int i = 0; i < Modules.Length; i++)
-                isKernelModule[i] = !Modules[i].IsMono && !Modules[i].FilePath.ToString().EndsWith("unity.exe");
+            {
+                isKernelModule[i] = !Modules[i].IsMono && !Modules[i].FilePath.ToString().EndsWith("unity.exe") && !Modules[i].FilePath.Contains(burstString);
+            }
+
             using (isKernelModule)
             using (var functionData = new NativeArray<bool>(Functions.Length, Allocator.TempJob))
             {
