@@ -103,7 +103,7 @@ namespace AsmExplorer
 			throw new System.NotImplementedException(nameof(GetAncestors));
 		}
 
-		protected unsafe override IList<int> GetDescendantsThatHaveChildren (int id)
+		protected override IList<int> GetDescendantsThatHaveChildren (int id)
 		{
             throw new System.NotImplementedException(nameof(GetDescendantsThatHaveChildren));
 		}
