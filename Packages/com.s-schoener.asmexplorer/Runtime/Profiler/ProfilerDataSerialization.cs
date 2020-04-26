@@ -219,7 +219,7 @@ namespace AsmExplorer.Profiler
                     foreach (var evt in trace.Events)
                     {
                         var sample = evt as SampledProfileTraceData;
-                        if (sample == null || sample.ProcessID != processId)
+                        if (sample == null || sample.ProcessID != processId || sample.NonProcess)
                             continue;
                         sampleData.Address = (long)sample.InstructionPointer;
                         sampleData.ThreadIdx = discoveredThreads.AddData(sample.Thread()?.ThreadIndex ?? ThreadIndex.Invalid);
