@@ -23,7 +23,7 @@ namespace AsmExplorer.Profiler
         }
     }
 
-    unsafe struct ProfilerDataSerializationHeader
+    struct ProfilerDataSerializationHeader
     {
         public int Version;
         public int TotalLength;
@@ -52,7 +52,7 @@ namespace AsmExplorer.Profiler
         public long SessionEnd;
     }
 
-    unsafe struct ThreadData
+    struct ThreadData
     {
         public FixedString64 ThreadName;
     }
