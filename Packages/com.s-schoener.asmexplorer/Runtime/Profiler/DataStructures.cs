@@ -12,6 +12,7 @@ namespace AsmExplorer.Profiler
         public NativeArray<ModuleData> Modules;
         public NativeArray<StackFrameData> StackFrames;
         public NativeArray<ThreadData> Threads;
+        public NativeArray<byte> BlobData;
 
         public void Dispose()
         {
@@ -20,6 +21,7 @@ namespace AsmExplorer.Profiler
             Modules.Dispose();
             StackFrames.Dispose();
             Threads.Dispose();
+            BlobData.Dispose();
         }
     }
 
@@ -42,6 +44,9 @@ namespace AsmExplorer.Profiler
 
         public int NumThreads;
         public long ThreadsOffset;
+
+        public int BlobLength;
+        public long BlobOffset;
 
     }
 
@@ -95,12 +100,13 @@ namespace AsmExplorer.Profiler
         public bool IsMono;
     }
 
-    unsafe struct FunctionData
+    struct FunctionData
     {
         public int Module;
         public FixedString512 Name;
 
         public ulong BaseAddress;
         public int Length;
+        public int CodeBlobOffset;
     }
 }

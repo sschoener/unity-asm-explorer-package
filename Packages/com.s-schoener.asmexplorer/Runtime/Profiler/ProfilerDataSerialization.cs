@@ -33,6 +33,7 @@ namespace AsmExplorer.Profiler
             Read(out trace.Functions, serializationHeader.NumFunctions, basePos + serializationHeader.FunctionsOffset);
             Read(out trace.Modules, serializationHeader.NumModules, basePos + serializationHeader.ModulesOffset);
             Read(out trace.Threads, serializationHeader.NumThreads, basePos + serializationHeader.ThreadsOffset);
+            Read(out trace.BlobData, serializationHeader.BlobLength, basePos + serializationHeader.BlobOffset);
 
             void Read<T>(out NativeArray<T> arr, int num, long offset) where T : unmanaged
             {
@@ -42,17 +43,20 @@ namespace AsmExplorer.Profiler
             }
         }
 
+        public const int ProfilerTraceVersion = 2;
+
         public static unsafe void WriteProfilerTrace(ref ProfilerTrace trace, Stream stream)
         {
             var writer = new RawWriter(stream);
             var header = new ProfilerDataSerializationHeader
             {
-                Version = 1,
+                Version = ProfilerTraceVersion,
                 NumFunctions = trace.Functions.Length,
                 NumModules = trace.Modules.Length,
                 NumSamples = trace.Samples.Length,
                 NumStackFrames = trace.StackFrames.Length,
-                NumThreads = trace.Threads.Length
+                NumThreads = trace.Threads.Length,
+                BlobLength = trace.BlobData.Length
             };
             long headerPos = stream.Position;
 
@@ -76,6 +80,9 @@ namespace AsmExplorer.Profiler
 
             header.ThreadsOffset = stream.Position - headerPos;
             writer.WriteArray(profTrace.Threads);
+
+            header.BlobOffset = stream.Position - headerPos;
+            writer.WriteArray(profTrace.BlobData);
 
             stream.Flush();
             header.TotalLength = (int)(stream.Position - headerPos);
@@ -208,6 +215,7 @@ namespace AsmExplorer.Profiler
                     SessionEnd = trace.SessionEndTime.Ticks,
                 };
 
+                var sampleRange = new Dictionary<MethodIndex, ulong>();
                 using (var samples = new NativeList<SampleData>(Allocator.Temp))
                 {
                     SampleData sampleData = default;
@@ -223,6 +231,18 @@ namespace AsmExplorer.Profiler
                         var codeAddress = sample.IntructionPointerCodeAddress();
                         sampleData.Function = GetFunctionIndex(codeAddress);
                         samples.Add(sampleData);
+
+                        if (sampleData.Function >= 0)
+                        {
+                            var index = discoveredFunctions.Data[sampleData.Function].Index;
+                            if (index == MethodIndex.Invalid) continue;
+                            if (!sampleRange.TryGetValue(index, out ulong previousMax))
+                                sampleRange[index] = sample.InstructionPointer;
+                            else
+                                sampleRange[index] = sample.InstructionPointer > previousMax
+                                    ? sample.InstructionPointer
+                                    : previousMax;
+                        }
                     }
                     profTrace.Samples = samples.ToArray(allocator);
                 }
@@ -245,9 +265,15 @@ namespace AsmExplorer.Profiler
 
                 using (var functions = new NativeList<FunctionData>(Allocator.Temp))
                 {
+                    var burstModules = new Dictionary<int, bool>
+                    {
+                        {-1, false}
+                    };
+                    var blobData = new NativeList<byte>(Allocator.Temp);
                     FunctionData funcData = default;
                     foreach (var func in discoveredFunctions.Data)
                     {
+                        bool copyCode;
                         if (func.Index != MethodIndex.Invalid)
                         {
                             var method = trace.CodeAddresses.Methods[func.Index];
@@ -255,9 +281,22 @@ namespace AsmExplorer.Profiler
                                 funcData.BaseAddress = method.MethodModuleFile.ImageBase + (ulong)method.MethodRva;
                             } else
                                 funcData.BaseAddress = 0;
-                            funcData.Length = -1;
+                            if (funcData.BaseAddress > 0 && method.MethodIndex != MethodIndex.Invalid && sampleRange.TryGetValue(method.MethodIndex, out var maxAddress))
+                            {
+                                Debug.Assert(maxAddress >= funcData.BaseAddress);
+                                // use the value of the furthest sample to estimate the length of the function
+                                funcData.Length = 16 + (int) (maxAddress - funcData.BaseAddress);
+                            }
+                            else
+                                funcData.Length = 0;
                             funcData.Module = discoveredModules.AddData(DiscoveredModule.FromIndex(method.MethodModuleFileIndex));
                             funcData.Name.CopyFrom(method.FullMethodName);
+                            if (!burstModules.TryGetValue((int) method.MethodModuleFileIndex, out var isBurst))
+                            {
+                                isBurst = method.MethodModuleFile.FilePath.ToLowerInvariant().Contains("burst");
+                                burstModules[(int) method.MethodModuleFileIndex] = isBurst;
+                            }
+                            copyCode = isBurst && funcData.Length > 0;
                         }
                         else
                         {
@@ -268,10 +307,21 @@ namespace AsmExplorer.Profiler
 
                             var fullName = MonoFunctionName(jitData.Method);
                             funcData.Name.CopyFrom(fullName);
+                            copyCode = true;
                         }
+
+                        if (copyCode)
+                        {
+                            funcData.CodeBlobOffset = blobData.Length;
+                            blobData.AddRange((void*) funcData.BaseAddress, funcData.Length);
+                        }
+                        else
+                            funcData.CodeBlobOffset = -1;
+
                         functions.Add(funcData);
                     }
                     profTrace.Functions = functions.ToArray(allocator);
+                    profTrace.BlobData = blobData.ToArray(allocator);
                 }
 
                 using (var modules = new NativeList<ModuleData>(Allocator.Temp))
