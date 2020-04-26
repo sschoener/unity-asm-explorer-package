@@ -177,14 +177,9 @@ namespace AsmExplorer.Profiler
             var discoveredFunctions = DiscoveredData<DiscoveredFunction>.Make(DiscoveredFunction.Invalid);
             var discoveredThreads = DiscoveredData<ThreadIndex>.Make(ThreadIndex.Invalid);
 
-            string additionalSymbolPath = "";
+            string additionalSymbolPath = BurstPath;
 #if UNITY_EDITOR
-            additionalSymbolPath = Path.GetDirectoryName(EditorApplication.applicationPath);
-            additionalSymbolPath += ";" + BurstPath;
-#else
-            // find burst path
-            additionalSymbolPath = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
-            additionalSymbolPath = Path.Combine(Application.dataPath, "Plugins");
+            additionalSymbolPath += ";" + Path.GetDirectoryName(EditorApplication.applicationPath);
 #endif
 
             var options = new TraceLogOptions()
@@ -379,8 +374,14 @@ namespace AsmExplorer.Profiler
             "lib_burst_generated.dll"
         };
 
+#if UNITY_EDITOR
         private const string RelativeBurstPath = "../Library/BurstCache/JIT";
+#else
+        private const string RelativeBurstPath = "Plugins";
+#endif
+
         static string BurstPath => Path.GetFullPath(Path.Combine(Application.dataPath, RelativeBurstPath));
+
 
         public static void TranslateEtlFile(string etlPath, Stream stream)
         {
