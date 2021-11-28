@@ -47,10 +47,10 @@ namespace AsmExplorer.Profiler
             UnityEditor.AssemblyReloadEvents.beforeAssemblyReload += BeforeAssemblyReload;
         }
 #else
-        [RuntimeInitializeOnLoadMethod]
+        [UnityEngine.RuntimeInitializeOnLoadMethod]
         static void InstallStopHandler()
         {
-            Application.quitting += () => StopSession(true);
+            UnityEngine.Application.quitting += () => StopSession(true);
         }
 #endif
 
