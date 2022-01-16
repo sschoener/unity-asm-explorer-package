@@ -101,7 +101,7 @@ namespace AsmExplorer.Profiler
                 new FindFunctionsByName
                 {
                     Functions = (FunctionData*)functions.GetUnsafeReadOnlyPtr(),
-                    Search = new FixedString128(functionName),
+                    Search = new FixedString128Bytes(functionName),
                     OutFunctions = tmpWhiteList.AsParallelWriter()
                 }.Schedule(functions.Length, 32).Complete();
                 var arr = new NativeArray<int>(tmpWhiteList.Count, Allocator.TempJob);
@@ -378,7 +378,7 @@ namespace AsmExplorer.Profiler
             {
                 var thread = m_Trace.Threads[i];
                 string threadName;
-                if (thread.ThreadName.UTF8LengthInBytes == 0)
+                if (thread.ThreadName.Length == 0)
                     threadName = "Thread " + i + " (unnamed)";
                 else
                     threadName = thread.ThreadName.ToString();
@@ -440,7 +440,7 @@ namespace AsmExplorer.Profiler
     [BurstCompile]
     unsafe struct FindFunctionsByName : IJobParallelFor
     {
-        public FixedString128 Search;
+        public FixedString128Bytes Search;
         [NativeDisableUnsafePtrRestriction]
         public FunctionData* Functions;
         public NativeQueue<int>.ParallelWriter OutFunctions;

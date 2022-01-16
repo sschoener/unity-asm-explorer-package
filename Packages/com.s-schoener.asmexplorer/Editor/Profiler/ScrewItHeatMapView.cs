@@ -115,7 +115,7 @@ namespace AsmExplorer.Profiler
             {
                 var thread = m_Trace.Threads[i];
                 string threadName;
-                if (thread.ThreadName.UTF8LengthInBytes == 0)
+                if (thread.ThreadName.Length == 0)
                     threadName = "Thread " + i + " (unnamed)";
                 else
                     threadName = thread.ThreadName.ToString();
