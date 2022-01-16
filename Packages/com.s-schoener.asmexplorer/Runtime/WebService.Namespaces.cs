@@ -28,11 +28,20 @@ namespace AsmExplorer
         {
             using (writer.Tag("code"))
             {
+                using (writer.ContainerFluid()) {
+                    writer.Inline("h5", "// Namespaces");
+                    foreach (var subNamespace in ns.Namespaces) {
+                        writer.Write("namespace ");
+                        NamespaceLink(writer, subNamespace);
+                        writer.WriteLine(";");
+                    }
+                }
+
                 foreach (var group in ns.Types.Where(t => t.DeclaringType == null).GroupBy(t => TypeKinds.Classify(t)).OrderBy(group => group.Key))
                 {
                     using (writer.ContainerFluid())
                     {
-                        writer.Inline("h6", "// " + group.Key.KindName());
+                        writer.Inline("h5", "// " + group.Key.KindName());
                         MakeCodeList(
                             writer,
                             group.OrderBy(t => t.Name),
