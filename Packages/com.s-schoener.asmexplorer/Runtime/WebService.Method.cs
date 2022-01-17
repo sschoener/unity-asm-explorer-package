@@ -177,6 +177,16 @@ namespace AsmExplorer
                 return;
             }
 
+            void WriteInstruction(Instruction inst)
+            {
+                var str = inst.ToString();
+                context.LineLength = str.Length;
+                int separator = str.IndexOf(' ');
+                using (writer.Tag("small", "class", "text-muted"))
+                    writer.Write(str.Substring(0, separator));
+                writer.Write(str.Substring(separator));
+            }
+
             using (writer.Tag("pre"))
             {
                 using (writer.Tag("code"))
@@ -211,13 +221,11 @@ namespace AsmExplorer
                             {
                                 if (nops == 1)
                                 {
-                                    writer.Write(context.LastInstruction.ToString());
+                                    WriteInstruction(context.LastInstruction);
                                 }
                                 else
                                 {
-                                    var str = context.LastInstruction.ToString();
-                                    writer.Write(str);
-                                    context.LineLength = str.Length;
+                                    WriteInstruction(context.LastInstruction);
                                     StartNote(writer, ref context);
 
                                     writer.Write("repeated nops (");
@@ -279,9 +287,7 @@ namespace AsmExplorer
                                     }
                                 }
 
-                                var str = inst.ToString();
-                                context.LineLength = str.Length;
-                                writer.Write(str);
+                                WriteInstruction(inst);
 
                                 if (inst.Mnemonic == ud_mnemonic_code.UD_Imov)
                                 {
