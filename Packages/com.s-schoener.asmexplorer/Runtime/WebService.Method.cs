@@ -789,7 +789,7 @@ namespace AsmExplorer
                     case 0x70: length += 4; arg = method.Module.ResolveType(BitConverter.ToInt32(data, offset + 1)); return "cpobj";
                     case 0x71: length += 4; arg = method.Module.ResolveType(BitConverter.ToInt32(data, offset + 1)); return "ldobj";
                     case 0x72: length += 4; return "ldstr " + '"' + method.Module.ResolveString(BitConverter.ToInt32(data, offset + 1)) + '"';
-                    case 0x73: length += 4; arg = method.Module.ResolveType(BitConverter.ToInt32(data, offset + 1)); return "newobj";
+                    case 0x73: length += 4; arg = method.Module.ResolveMethod(BitConverter.ToInt32(data, offset + 1)); return "newobj";
                     case 0x74: length += 4; arg = method.Module.ResolveType(BitConverter.ToInt32(data, offset + 1)); return "castclass";
                     case 0x75: length += 4; arg = method.Module.ResolveType(BitConverter.ToInt32(data, offset + 1)); return "isinst";
                     case 0x76: return "conv.r.un";

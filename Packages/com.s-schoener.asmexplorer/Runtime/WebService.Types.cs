@@ -561,8 +561,19 @@ namespace AsmExplorer
             }
             else if (type.IsPointer)
             {
-                writer.Write("*");
+                if (noLink)
+                    writer.Write("*");
+                else
+                    TypeLink(writer, type, "*");
                 WriteTypeName(writer, type.GetElementType(), noLink);
+            }
+            else if (type.IsArray)
+            {
+                WriteTypeName(writer, type.GetElementType(), noLink);
+                if (noLink)
+                    writer.Write("[]");
+                else
+                    TypeLink(writer, type, "[]");
             }
             else
             {
