@@ -238,9 +238,10 @@ namespace AsmExplorer
                                     using (writer.ContainerFluid(true)) {
                                         var sourceLoc = sourceLocation[monoIlOffsetIndex];
                                         if (!string.IsNullOrEmpty(sourceLoc.File) && files.TryGetValue(sourceLoc.File, out var lines)) {
-                                            if (sourceLoc.Row <= lines.Length && sourceLoc.Column < lines[sourceLoc.Row - 1].Length) {
-                                                writer.Write($"L{sourceLoc.Row}:");
-                                                writer.Write(lines[sourceLoc.Row - 1]);
+                                            var line = sourceLoc.Row;
+                                            if (line > 0 && line <= lines.Length && sourceLoc.Column < lines[line - 1].Length) {
+                                                writer.Write($"L{line}:");
+                                                writer.Write(lines[line - 1]);
                                                 writer.Write("\n");
                                             }
                                         }
