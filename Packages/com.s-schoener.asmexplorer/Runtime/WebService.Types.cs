@@ -183,34 +183,36 @@ namespace AsmExplorer
             LayoutNestedTypes(writer, type);
         }
 
+        private void WriteFieldModifiers(HtmlWriter writer, FieldInfo f) {
+            writer.Write(f.GetAccessModifier().Pretty());
+            if (f.IsLiteral)
+                writer.Write(" const");
+            else if (f.IsStatic)
+                writer.Write(" static");
+            else if (f.IsInitOnly)
+                writer.Write(" readonly");
+        }
+
+        private void WriteFieldType(HtmlWriter writer, FieldInfo f) {
+            if (f.FieldType.IsByRef)
+            {
+                writer.Write("ref ");
+                WriteTypeName(writer, f.FieldType.GetElementType());
+            }
+            else
+            {
+                WriteTypeName(writer, f.FieldType);
+            }
+        }
+
         private void LayoutFields(HtmlWriter writer, IEnumerable<FieldInfo> fields)
         {
             MakeCodeList(
                 writer,
                 fields,
                 f => WriteInlineAttributes(writer, f.GetCustomAttributes(false)),
-                f =>
-                {
-                    writer.Write(f.GetAccessModifier().Pretty());
-                    if (f.IsLiteral)
-                        writer.Write(" const");
-                    else if (f.IsStatic)
-                        writer.Write(" static");
-                    else if (f.IsInitOnly)
-                        writer.Write(" readonly");
-                },
-                f =>
-                {
-                    if (f.FieldType.IsByRef)
-                    {
-                        writer.Write("ref ");
-                        WriteTypeName(writer, f.FieldType.GetElementType());
-                    }
-                    else
-                    {
-                        WriteTypeName(writer, f.FieldType);
-                    }
-                },
+                f => WriteFieldModifiers(writer, f),
+                f => WriteFieldType(writer, f),
                 f => writer.Write(f.Name)
             );
         }

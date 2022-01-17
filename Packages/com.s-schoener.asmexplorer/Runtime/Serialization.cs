@@ -9,11 +9,12 @@ namespace AsmExplorer
         const BindingFlags k_AllBindings = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
         const string k_MethodEncodingGenericArgSeparator = ";;;with;;;";
 
-        public static string EncodeMethod(MethodInfo method)
+        public static string EncodeMethod(MethodBase method)
         {
             if (method.IsGenericMethod && !method.IsGenericMethodDefinition)
             {
-                var genericDefinition = method.GetGenericMethodDefinition();
+                var info = method as MethodInfo;
+                var genericDefinition = info.GetGenericMethodDefinition();
                 string methodId = genericDefinition.ToString();
                 var arguments = method.GetGenericArguments();
                 methodId += k_MethodEncodingGenericArgSeparator + string.Join(";", arguments.Select(EncodeType));
@@ -25,7 +26,7 @@ namespace AsmExplorer
             }
         }
 
-        public static MethodInfo DecodeMethod(Type type, string encodedMethod)
+        public static MethodBase DecodeMethod(Type type, string encodedMethod)
         {
             int separator = encodedMethod.IndexOf(k_MethodEncodingGenericArgSeparator);
             Type[] genericArguments;

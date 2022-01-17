@@ -18,6 +18,9 @@ namespace AsmExplorer
         readonly WebServer m_WebServer;
         readonly string m_CompletePrefix;
         readonly Explorer m_Explorer;
+#if UNITY_EDITOR
+        internal static UnityEditor.Compilation.CodeOptimization OptimizationLevel;
+#endif
 
         public WebService(Explorer explorer, string prefix, int port = 8080)
         {
@@ -25,6 +28,9 @@ namespace AsmExplorer
             m_CompletePrefix = "http://localhost:" + port + "/" + prefix + "/";
             m_WebServer = new WebServer(HandleRequest, m_CompletePrefix,
                 "http://127.0.0.1:" + port + "/" + prefix + "/");
+#if UNITY_EDITOR
+            OptimizationLevel = UnityEditor.Compilation.CompilationPipeline.codeOptimization;
+#endif
         }
 
         public static string MakeCommandURL(string baseUrl, WebServiceCommand command)
@@ -148,6 +154,12 @@ tr:nth-child(even) {
 .container-fluid {
     margin-top: 15px;
     margin-bottom: 15px;
+}
+
+.highlight {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    margin-bottom: 1rem;
 }
 ";
             writer.WriteLine(header);
@@ -278,9 +290,9 @@ tr:nth-child(even) {
             }
         }
 
-        void MethodLink(HtmlWriter writer, MethodInfo method) => MethodLink(writer, method, method.DeclaringType.Name + "." + method.Name);
+        void MethodLink(HtmlWriter writer, MethodBase method) => MethodLink(writer, method, method.DeclaringType.Name + "." + method.Name);
 
-        void MethodLink(HtmlWriter writer, MethodInfo method, string txt)
+        void MethodLink(HtmlWriter writer, MethodBase method, string txt)
         {
             writer.AHref(txt,
                 Html.Url(

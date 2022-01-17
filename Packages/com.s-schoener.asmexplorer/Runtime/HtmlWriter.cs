@@ -110,8 +110,10 @@ namespace AsmExplorer
 
     static class HtmlWriterExtensions
     {
-        public static HtmlWriter.TagHandle ContainerFluid(this HtmlWriter writer)
+        public static HtmlWriter.TagHandle ContainerFluid(this HtmlWriter writer, bool highlight=false)
         {
+            if (highlight)
+                return writer.Tag("div", "class", "container-fluid highlight");
             return writer.Tag("div", "class", "container-fluid");
         }
     }

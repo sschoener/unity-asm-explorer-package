@@ -53,8 +53,6 @@ namespace AsmExplorer
                     });
                 }
             }
-
-            list.Sort((lhs, rhs) => lhs.NativeOffset.CompareTo(rhs.NativeOffset));
             return list;
         }
 
