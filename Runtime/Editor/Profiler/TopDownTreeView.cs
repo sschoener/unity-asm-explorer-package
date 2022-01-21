@@ -151,8 +151,8 @@ namespace AsmExplorer
             };
         }
 
-        private static readonly FixedString32Bytes BurstCacheDir = "burstcache";
-        private static readonly FixedString32Bytes BurstLib = "lib_burst_generated.dll";
+        private static readonly FixedString32 BurstCacheDir = "burstcache";
+        private static readonly FixedString32 BurstLib = "lib_burst_generated.dll";
 
         protected override void RowGUI(RowGUIArgs args)
         {
