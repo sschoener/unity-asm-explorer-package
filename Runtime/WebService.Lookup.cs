@@ -5,7 +5,7 @@ using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Reflection;
-using System.Web;
+using HttpUtility = Mono.Web.HttpUtility;
 
 namespace AsmExplorer
 {
@@ -26,7 +26,8 @@ namespace AsmExplorer
 
             NameValueCollection postValues;
             using (StreamReader reader = new StreamReader(request.InputStream, request.ContentEncoding))
-                postValues = System.Web.HttpUtility.ParseQueryString(reader.ReadToEnd());
+                postValues = HttpUtility.ParseQueryString(reader.ReadToEnd());
+
             if (postValues[addresses] != null)
             {
                 var modules = Process.GetCurrentProcess().Modules;
