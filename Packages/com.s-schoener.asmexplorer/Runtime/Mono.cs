@@ -107,12 +107,10 @@ namespace AsmExplorer
         {
             if (_methodInfoCtor == null)
             {
-#if UNITY_2022_2_OR_NEWER
-                _methodInfoCtor = Type.GetType("System.Reflection.RuntimeMethodInfo").GetConstructor(BindingFlags.NonPublic | BindingFlags.Instance, null, new Type[] { typeof(RuntimeMethodHandle) }, null);
-#else
-                // if this throws, maybe the path right above should execute for your version instead
-                _methodInfoCtor = Type.GetType("System.Reflection.MonoMethod").GetConstructor(BindingFlags.NonPublic | BindingFlags.Instance, null, new Type[] { typeof(RuntimeMethodHandle) }, null);
-#endif
+                var type = Type.GetType("System.Reflection.MonoMethod");
+                if (type == null) // this is necessary for newer versions of Unity
+                    type = Type.GetType("System.Reflection.RuntimeMethodInfo");
+                _methodInfoCtor = type.GetConstructor(BindingFlags.NonPublic | BindingFlags.Instance, null, new Type[] { typeof(RuntimeMethodHandle) }, null);
                 if (_parameterTmp == null)
                     _parameterTmp = new object[1];
             }
@@ -128,12 +126,9 @@ namespace AsmExplorer
         {
             if (s_MonoCtorType == null)
             {
-#if UNITY_2022_2_OR_NEWER
-                s_MonoCtorType = Type.GetType("System.Reflection.RuntimeConstructorInfo");
-#else
-                // if this throws, maybe the path right above should execute for your version instead
                 s_MonoCtorType = Type.GetType("System.Reflection.MonoCMethod");
-#endif
+                if (s_MonoCtorType == null) // this is necessary for newer versions of Unity
+                    s_MonoCtorType = Type.GetType("System.Reflection.RuntimeConstructorInfo");
                 s_CtorHandleField = s_MonoCtorType.GetField("mhandle", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             }
             object ctor = Activator.CreateInstance(s_MonoCtorType);
