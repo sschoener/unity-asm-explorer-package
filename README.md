@@ -6,7 +6,14 @@ This package contains a bunch of different tools for poking around in Unity. The
 Scroll down for more explanations.
 
 ## Setup
-Copy the package `Packages/com.s-schoener.asmexplorer` from this project into your project's package folder. You may have to install a recent version of Burst/Jobs/collections; the dependencies aren't properly setup yet.
+Copy the package `Packages/com.s-schoener.asmexplorer` from this project into your project's package folder. Alternatively, add this dependency to your project's `manifest.json`:
+```
+{
+  "dependencies": {
+    "com.s-schoener.asmexplorer": "https://github.com/sschoener/unity-asm-explorer-package.git?path=/Packages/com.s-schoener.asmexplorer"
+  }
+}
+```
 
 Also, make sure that you have the [Windows ADK](https://docs.microsoft.com/en-us/windows-hardware/test/wpt/windows-performance-analyzer) installed to get the performance analyzer toolkit (if you want to use Screw It! - otherwise this is not needed).
 
