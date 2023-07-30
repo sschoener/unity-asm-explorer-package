@@ -6,7 +6,7 @@ namespace AsmExplorer
     public static class ExplorerInstance
     {
         public const int Port = 8080;
-        public static string URL => "http://localhost:" + Port + "/explorer/";
+        public static string URL => "http://127.0.0.1:" + Port + "/explorer/";
         static WebService s_WebService;
 
         static ExplorerInstance() {

@@ -25,9 +25,9 @@ namespace AsmExplorer
         public WebService(Explorer explorer, string prefix, int port = 8080)
         {
             m_Explorer = explorer;
-            m_CompletePrefix = "http://localhost:" + port + "/" + prefix + "/";
+            m_CompletePrefix = "http://127.0.0.1:" + port + "/" + prefix + "/";
             m_WebServer = new WebServer(HandleRequest, m_CompletePrefix,
-                "http://127.0.0.1:" + port + "/" + prefix + "/");
+                "http://localhost:" + port + "/" + prefix + "/");
 #if UNITY_EDITOR
             OptimizationLevel = UnityEditor.Compilation.CompilationPipeline.codeOptimization;
 #endif
