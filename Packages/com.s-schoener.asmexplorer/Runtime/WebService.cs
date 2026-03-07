@@ -171,6 +171,7 @@ tr:nth-child(even) {
 
         void ExecuteInspect(HtmlWriter writer, NameValueCollection args)
         {
+            var options = ParseDisassemblyOptions(args);
             if (args["assembly"] != null)
             {
                 var asm = args["assembly"];
@@ -178,7 +179,7 @@ tr:nth-child(even) {
                 {
                     var type = args["type"];
                     if (args["method"] != null)
-                        InspectMethod(writer, asm, type, args["method"]);
+                        InspectMethod(writer, asm, type, args["method"], options);
                     else
                         InspectType(writer, asm, type);
                 }
@@ -195,6 +196,22 @@ tr:nth-child(even) {
             {
                 InspectDomain(writer);
             }
+        }
+
+        static bool ParseCheckbox(NameValueCollection args, string key)
+        {
+            var value = args[key];
+            return value == "1" || value == "true" || value == "on";
+        }
+
+        static DisassemblyOptions ParseDisassemblyOptions(NameValueCollection args)
+        {
+            bool hasOptions = args["showOptions"] == "1";
+            return new DisassemblyOptions
+            {
+                ShowAddress = !hasOptions || ParseCheckbox(args, "showAddress"),
+                ShowInstructionBytes = !hasOptions || ParseCheckbox(args, "showBytes"),
+            };
         }
 
         static void MakeCodeList<T>(HtmlWriter writer, IEnumerable<T> ts, params Action<T>[] inner)

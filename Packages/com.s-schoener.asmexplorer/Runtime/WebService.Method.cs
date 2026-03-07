@@ -12,6 +12,12 @@ namespace AsmExplorer
     {
         const int k_NoteColumn = 77;
 
+        struct DisassemblyOptions
+        {
+            public bool ShowAddress;
+            public bool ShowInstructionBytes;
+        }
+
         void StartNote(HtmlWriter writer, ref MethodContext context)
         {
             if (!context.HasLineNote)
@@ -24,7 +30,7 @@ namespace AsmExplorer
             writer.Write("; ");
         }
 
-        private void InspectMethod(HtmlWriter writer, string assemblyName, string typeName, string encodedMethod)
+        private void InspectMethod(HtmlWriter writer, string assemblyName, string typeName, string encodedMethod, DisassemblyOptions options)
         {
             var asm = m_Explorer.FindAssembly(assemblyName);
             if (asm == null)
@@ -44,11 +50,11 @@ namespace AsmExplorer
             var ctor = Serialization.DecodeCtor(type, encodedMethod);
             if (method != null)
             {
-                InspectMethod(writer, asm, type, method);
+                InspectMethod(writer, asm, type, method, encodedMethod, options);
             }
             else if (ctor != null)
             {
-                InspectCtor(writer, asm, type, ctor);
+                InspectCtor(writer, asm, type, ctor, encodedMethod, options);
             }
             else
             {
@@ -80,10 +86,10 @@ namespace AsmExplorer
             }
         }
 
-        private IEnumerable<Instruction> GetInstructions(MonoJitInfo jit)
+        private IEnumerable<Instruction> GetInstructions(MonoJitInfo jit, DisassemblyOptions options)
         {
-            Disassembler.Translator.IncludeBinary = true;
-            Disassembler.Translator.IncludeAddress = true;
+            Disassembler.Translator.IncludeBinary = options.ShowInstructionBytes;
+            Disassembler.Translator.IncludeAddress = options.ShowAddress;
             ArchitectureMode mode = ArchitectureMode.x86_64;
             if (IntPtr.Size == 4)
                 mode = ArchitectureMode.x86_32;
@@ -108,7 +114,7 @@ namespace AsmExplorer
 
         private object _disassemblerLock = new object();
 
-        private void WriteDissassembly(HtmlWriter writer, MethodBase method)
+        private void WriteDissassembly(HtmlWriter writer, MethodBase method, string encodedMethod, DisassemblyOptions options)
         {
             if (method.IsAbstract || method.ContainsGenericParameters)
             {
@@ -172,6 +178,35 @@ namespace AsmExplorer
                 writer.Break();
             }
 
+            using (writer.ContainerFluid())
+            using (writer.Tag("form", "action", CommandUrl("inspect"), "method", "get"))
+            {
+                writer.InlineTag("input", "type", "hidden", "name", "assembly", "value", method.DeclaringType.Assembly.FullName);
+                writer.InlineTag("input", "type", "hidden", "name", "type", "value", method.DeclaringType.FullName);
+                writer.InlineTag("input", "type", "hidden", "name", "method", "value", encodedMethod);
+                writer.InlineTag("input", "type", "hidden", "name", "showOptions", "value", "1");
+
+                using (writer.Tag("div", "class", "form-check"))
+                {
+                    if (options.ShowAddress)
+                        writer.InlineTag("input", "class", "form-check-input", "type", "checkbox", "name", "showAddress", "value", "1", "checked", "checked");
+                    else
+                        writer.InlineTag("input", "class", "form-check-input", "type", "checkbox", "name", "showAddress", "value", "1");
+                    writer.Inline("label", "show address", "class", "form-check-label");
+                }
+
+                using (writer.Tag("div", "class", "form-check"))
+                {
+                    if (options.ShowInstructionBytes)
+                        writer.InlineTag("input", "class", "form-check-input", "type", "checkbox", "name", "showBytes", "value", "1", "checked", "checked");
+                    else
+                        writer.InlineTag("input", "class", "form-check-input", "type", "checkbox", "name", "showBytes", "value", "1");
+                    writer.Inline("label", "show instruction bytes", "class", "form-check-label");
+                }
+
+                writer.Inline("button", "Apply", "type", "submit", "class", "btn btn-sm btn-primary mt-2");
+            }
+
             if (jitInfo.CodeSize <= 0)
             {
                 return;
@@ -181,10 +216,23 @@ namespace AsmExplorer
             {
                 var str = inst.ToString();
                 context.LineLength = str.Length;
+                if (!options.ShowAddress)
+                {
+                    writer.Write(str);
+                    return;
+                }
+
                 int separator = str.IndexOf(' ');
-                using (writer.Tag("small", "class", "text-muted"))
-                    writer.Write(str.Substring(0, separator));
-                writer.Write(str.Substring(separator));
+                if (separator > 0)
+                {
+                    using (writer.Tag("small", "class", "text-muted"))
+                        writer.Write(str.Substring(0, separator));
+                    writer.Write(str.Substring(separator));
+                }
+                else
+                {
+                    writer.Write(str);
+                }
             }
 
             using (writer.Tag("pre"))
@@ -196,7 +244,7 @@ namespace AsmExplorer
                     bool first = true;
                     lock (_disassemblerLock)
                     {
-                        foreach (var inst in GetInstructions(jitInfo))
+                        foreach (var inst in GetInstructions(jitInfo, options))
                         {
                             context.HasLineNote = false;
 
@@ -528,7 +576,7 @@ namespace AsmExplorer
             }
         }
 
-        private void InspectMethod(HtmlWriter writer, Assembly assembly, Type type, MethodBase method)
+        private void InspectMethod(HtmlWriter writer, Assembly assembly, Type type, MethodBase method, string encodedMethod, DisassemblyOptions options)
         {
             LayoutMethodHeader(writer, assembly, type, method);
             using (writer.Tag("code"))
@@ -542,10 +590,10 @@ namespace AsmExplorer
             }
 
             using (writer.ContainerFluid())
-                WriteDissassembly(writer, method);
+                WriteDissassembly(writer, method, encodedMethod, options);
         }
 
-        private void InspectCtor(HtmlWriter writer, Assembly assembly, Type type, ConstructorInfo ctor)
+        private void InspectCtor(HtmlWriter writer, Assembly assembly, Type type, ConstructorInfo ctor, string encodedMethod, DisassemblyOptions options)
         {
             LayoutMethodHeader(writer, assembly, type, ctor);
             using (writer.Tag("code"))
@@ -557,7 +605,7 @@ namespace AsmExplorer
             }
 
             using (writer.ContainerFluid())
-                WriteDissassembly(writer, ctor);
+                WriteDissassembly(writer, ctor, encodedMethod, options);
         }
 
         private void WriteCtorPrefix(HtmlWriter writer, MethodBase c)
