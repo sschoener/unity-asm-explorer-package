@@ -188,5 +188,17 @@ namespace AsmExplorer
             IntPtr functionPtr = method.MethodHandle.GetFunctionPointer();
             return GetJitInfo(functionPtr);
         }
+
+        public static string PMip(IntPtr instructionPointer)
+        {
+            if (instructionPointer == IntPtr.Zero)
+                return null;
+
+            var namePtr = PMip_Internal(instructionPointer);
+            if (namePtr == null)
+                return null;
+
+            return Marshal.PtrToStringAnsi((IntPtr)namePtr);
+        }
     }
 }

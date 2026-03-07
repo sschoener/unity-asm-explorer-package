@@ -499,7 +499,15 @@ namespace AsmExplorer
                 }
                 else
                 {
-                    writer.Write("unknown target @ " + callTarget.ToString("X16"));
+                    var pmip = Mono.PMip((IntPtr)callTarget);
+                    if (!string.IsNullOrEmpty(pmip))
+                    {
+                        writer.Write(pmip);
+                    }
+                    else
+                    {
+                        writer.Write("unknown target @ " + callTarget.ToString("X16"));
+                    }
                 }
             }
             else if (context.DebugEnabled)
